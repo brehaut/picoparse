@@ -1,6 +1,6 @@
 """picoparse -- a small lexer and parser library. Regular expression free.
 """
-# Copyright (c) 2008, Andrew Brehaut
+# Copyright (c) 2008, Andrew Brehaut, Steven Ashley
 # All rights reserved.
 # 
 # Redistribution and use in source and binary forms, with or without
