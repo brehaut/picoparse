@@ -73,7 +73,7 @@ def hex_entity():
     return chr(int(build_string(many1(hex_decimal_digit)), 16))
 
 def dec_entity():
-    return chr(int(build_string(many1(hex_decimal_digit)), 10))
+    return chr(int(build_string(many1(dec_decimal_digit)), 10))
     
 def numeric_entity():
     one_of('#')
