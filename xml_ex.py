@@ -1,7 +1,7 @@
 """This is a simple _example_ of using picoparse to parse XML - not for real use. 
 
 This example looks at XML as it is a textual stucture that the majority are familiar with. 
-
+Comments throughout the file explain what is going on
 """
 # Copyright (c) 2008, Andrew Brehaut, Steven Ashley
 # All rights reserved.
@@ -28,9 +28,35 @@ This example looks at XML as it is a textual stucture that the majority are fami
 # POSSIBILITY OF SUCH DAMAGE.
 
 from picoparse import one_of, many, many1, not_one_of, run_parser, tri, commit, optional, fail
-from picoparse import choice, string, peek, cut
+from picoparse import choice, string, peek, cut, string
 from functools import partial
 
+# some general functions to help build parsers; build string exists so we can compose it 
+# with parser that return a series of characters or strings
+def compose(f, g):
+    return lambda *args, **kwargs: f(g(*args, **kwargs))
+
+def build_string(iterable):
+    return u''.join(iterable)
+
+# We define common primative parsers by partial application. This is similar to the lexical 
+# analysis stage of a more traditional parser tool
+open_angle = partial(one_of, '<')
+close_angle = partial(one_of, '>')
+slash = partial(one_of, '/')
+question = partial(one_of, '?')
+equals = partial(one_of, '=')
+quote = partial(one_of, "\"'")
+whitespace_char = partial(one_of, ' \t\n\r')
+whitespace = partial(many, whitespace_char)
+whitespace1 = partial(many1, whitespace_char)
+element_text = compose(build_string, partial(many1, partial(not_one_of, ' \t\r\n<>/=')))
+decimal_digit = partial(one_of, '0123456789')
+hex_decimal_digit = partial(one_of, '0123456789AaBbCcDdEeFf')
+
+# next we define the processing of an entity and then an xml_char, which are used later in node
+# definitions. A more sophisticated parser would let additional entities be regestered with 
+# directives
 named_entities = {
     'amp':'&',
     'quot':'"',
@@ -39,27 +65,7 @@ named_entities = {
     'gt':'>',
 }
 
-def compose(f, g):
-    return lambda *args, **kwargs: f(g(*args, **kwargs))
-
-def build_string(iterable):
-    return u''.join(iterable)
-
-open_angle = partial(one_of, '<')
-close_angle = partial(one_of, '>')
-slash = partial(one_of, '/')
-equals = partial(one_of, '=')
-quote = partial(one_of, "\"'")
-whitespace = partial(many, partial(one_of, ' \t\n\r'))
-element_text = compose(build_string, partial(many1, partial(not_one_of, ' \t\r\n<>/=')))
-decimal_digit = partial(one_of, '0123456789')
-hex_decimal_digit = partial(one_of, '0123456789AaBbCcDdEeFf')
-
-def xml():
-    optional(processing, None)
-    whitespace()
-    return node()
-
+# entity is the toplevel parser for &...; notation, it chooses which sub parser to use
 def entity():
     one_of('&')
     ent = choice(named_entity, numeric_entity)
@@ -74,35 +80,108 @@ def named_entity():
 def hex_entity():
     one_of('x')
     return chr(int(build_string(many1(hex_decimal_digit)), 16))
-
+    
 def dec_entity():
     return chr(int(build_string(many1(decimal_digit)), 10))
-    
+
 def numeric_entity():
     one_of('#')
     return choice(hex_entity, dec_entity)
 
+# finally, xml_char is created by partially apply choice to either, normal characters or entities
 xml_char = partial(choice, partial(not_one_of, '<>&'), entity)
 
+# we want to be able to parse quoted strings, sometimes caring what the form of the content is
+def quoted_parser(parser):
+    quote_char = quote()
+    value = parser()
+    one_of(quote_char)
+    return value
+    
+# now we are ready to start implementing the main document parsers.
+# xml is our entrypoint parser. The XML spec requires a specific (but optional) prolog
+# before the root element node, of which there may only be one
+def xml():
+    prolog()
+    whitespace()
+    return element()
+    
+def prolog():
+    """
+    [22]   	prolog	   ::=   	 XMLDecl? Misc* (doctypedecl Misc*)?
+    [23]   	XMLDecl	   ::=   	'<?xml' VersionInfo EncodingDecl? SDDecl? S? '?>'
+    [24]   	VersionInfo	   ::=   	 S 'version' Eq ("'" VersionNum "'" | '"' VersionNum '"')
+    [25]   	Eq	   ::=   	 S? '=' S?
+    [26]   	VersionNum	   ::=   	'1.' [0-9]+
+    [27]   	Misc	   ::=   	 Comment | PI | S"""
+    whitespace()
+    print optional(partial(processing, xmldecl), None)
+    many(partial(choice, processing, comment, whitespace1))
+    optional(doctype, None)    
+    many(partial(choice, processing, comment, whitespace1))
+
+# The xml declaration could be parsed with a specialised processing directive, or it can be
+# handled as a special case. We are going to handle it as a specialisation of the processing.
+# our processing directive can optionally be given a parser to provide more detailed handling
+# or it will just consume the body 
+@tri
+def processing(parser = False):
+    parser = parser if parser else partial(many, partial(not_one_of, '?'))
+
+    open_angle()
+    one_of('?')
+    result = parser()
+    whitespace()
+    
+    one_of('?')
+    close_angle()
+    return result
+
+def xmldecl():
+    string('xml')
+    whitespace()
+    return ('xml', 
+            optional(partial(xmldecl_attr, 'version', version_num), "1.0"), 
+            optional(partial(xmldecl_attr, 'standalone', standalone), "yes"))
+    
+def xmldecl_attr(name, parser):
+    string(name)
+    whitespace()
+    equals()
+    whitespace()
+    value = quoted_parser(version_num)
+    return value
+
+def version_num():
+    string('1.')
+    return "1." + build_string(many1(decimal_digit))
+    
+def standalone():
+    return choice(partial(string, 'yes'), partial(string, 'no'))
+
+
+comment = fail
+
+# Node is the general purpose node parser. it will consume any white space and then 
+# choose the first parser from the set provided that matches the input
 def node():
-    return choice(processing, element,  text_node)
+    whitespace()
+    return choice(processing, element, text_node)
 
 def text_node():
     text = build_string(many1(xml_char))
     return "TEXT", text
 
 @tri
-def processing():
-    whitespace()
+def doctype():
     open_angle()
-    one_of('?')
-    many(partial(not_one_of, '?'))
-    one_of('?')
+    one_of('!')
+    string('DOCTYPE')
+    many(partial(not_one_of, '>'))
     close_angle()
 
 @tri
 def element():
-    whitespace()
     open_angle()
     name = element_text()
     commit()
@@ -139,15 +218,16 @@ def attribute():
     whitespace()
     equals()
     whitespace()
-    quote()
-    value = build_string(many(partial(choice, entity, partial(not_one_of, "\"'"))))
-    quote()
-    return "ATTR", name, value
+    return "ATTR", name, quoted_parser(compose(build_string, partial(many, partial(choice, entity, partial(not_one_of, "\"'")))))
 
+parse_xml = partial(run_parser, xml)
     
 
-tokens, remaining = run_parser(xml, """
-<? xml version="1.0" ?>
+tokens, remaining = parse_xml("""
+<?xml version="1.0" ?>
+
+<!DOCTYPE MyDoctype>
+
 <root>
     <self-closing />
     <? this processing is ignored ?>
@@ -157,7 +237,7 @@ tokens, remaining = run_parser(xml, """
 </root>
 """)
 
-
+#tokens, remaining = run_parser(xml, file('/Users/andrew/Music/iTunes/iTunes Music Library.xml').read())
 
 print "nodes:", tokens
 print
