@@ -103,32 +103,33 @@ class BufferWalker(object):
         self.stack = []
         self.index = 0
 
-
-def generate_parser(parsers):
-    """Given a list of top level parsers (in order), generates a top level parser.
+def many(remainder, parser):
+    """Tries one parser over and over until it fails. Returns sucessive results in a generator.
     """
-    def lexer(input):
-        for result in choice(BufferWalker(input), parsers):
-            yield result
-    return lexer
-    
-# parser implementation functions
-def choice(remainder, parsers):
-    """Trys the parsers passed in order, returning the result of the first successful.
-    """
+    result = []
     while remainder:
-        for parser in parsers:
-            try:
-                remainder.push()
-                token = tokeniser(remainder)
-                print token
-                remainder.accept()
-                yield token
-                break
-            except NoMatch:
-                remainder.pop()
-        else:
-            raise NoMatch()
+        try:
+            remainder.push()
+            result.append(parser(remainder))
+            remainder.accept()
+        except NoMatch:
+            remainder.pop()
+            return result
+
+def choice(remainder, parsers):
+    """Tries the parsers passed in order, returning the result of the first successful.
+    """
+    for parser in parsers:
+        try:
+            remainder.push()
+            token = parser(remainder)
+            remainder.accept()
+            return token
+        except NoMatch:
+            remainder.pop()
+    else:
+        raise NoMatch()
+
 
 def in_set(item, possibles):
     """is the given item not None and in the set of possibles.
@@ -172,3 +173,15 @@ def scan_collect(scanner, possibles, items):
 scan_while = partial(scan_collect, scan_char)
 scan_until = partial(scan_collect, scan_nchar)
 scan_whitespace = partial(scan_while, ' \t\n\r')
+
+def rest(buf):
+    result = []
+    while True:
+        token = buf.next()
+        if token:
+            result.append(token)
+        else:
+            break
+    return u''.join(result)
+
+
