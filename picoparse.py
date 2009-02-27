@@ -89,15 +89,20 @@ class BufferWalker(object):
         return self.buffer[self.index] if self.index < self.len else None
     
     def attempt(self):
+        result = self.depth
         self.depth += 1
+        return result
     
     def fail(self):
         raise NoMatch()
     
-    def commit(self):
-        self.depth -= 1
+    def commit(self, depth = None):
         if self.depth < 0:
             raise Exception("commit without corresponding attempt")
+        if depth is None:
+            self.depth -= 1
+        elif self.depth > depth:
+            self.depth = depth
         if self.depth == 0:
             self.cut()
     
@@ -180,9 +185,9 @@ def notfollowedby(parser):
 
 def tri(parser):
     def fun(*args, **kwargs):
-        attempt()
+        depth = attempt()
         result = parser(*args, **kwargs)
-        commit()
+        commit(depth)
         return result
     return fun
 
