@@ -30,7 +30,6 @@ decimal_digit = partial(one_of, '0123456789')
 hex_decimal_digit = partial(one_of, '0123456789AaBbCcDdEeFf')
 
 def xml():
-    whitespace()
     optional(processing, None)
     whitespace()
     return node()
@@ -108,7 +107,7 @@ def end_element(name):
 @tri
 def attribute():
     whitespace()
-    name = many1(element_text)
+    name = element_text()
     commit()
     whitespace()
     equals()
