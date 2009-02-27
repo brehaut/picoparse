@@ -85,45 +85,58 @@ class BufferWalker(object):
             self._fill((self.index - self.len) + 1) 
         return self.buffer[self.index] if self.index < self.len else None
 
-    def push(self):
+    def attempt(self):
         """Remember the current location."""
         self.stack.append(self.index)
+        return self.index
         
-    def pop(self):
+    def backtrack(self):
         """Return to the previously remember location."""
         if self.stack:
             self.index = self.stack.pop()
         
-    def accept(self):
-        """Refresh the stack. 
-        the current index is the start of the buffer, processed data is released.
-        """
+    def cut(self):
+        self.stack = []
         self.buffer = self.buffer[self.index:]
         self.len = len(self.buffer)
-        self.stack = []
         self.index = 0
+    
+    def commit(self, handle=None):
+        """Refresh the stack. The current index is the start of the buffer, processed data is released."""
+        if self.stack and (handle == None or handle == self.stack.peek())
+            self.stack.pop()
+            if not self.stack:
+                self.cut()
+
+def attempt(buf, parser):
+    handle = buf.attempt()
+    try:
+        result = parser(buf)
+        remainder.commit(handle)
+        return result
+    except NoMatch:
+        remainder.backtrack(handle)
+        raise NoMatch
 
 def many(remainder, parser):
-    """Tries one parser over and over until it fails. Returns sucessive results in a generator.
+    """Tries one parser over and over until it fails. Returns sucessive results in a list.
     """
     result = []
     while remainder:
         try:
-            remainder.push()
             result.append(parser(remainder))
-            remainder.accept()
         except NoMatch:
-            remainder.pop()
+            remainder.backtrack()
             return result
+
+
 
 def choice(remainder, parsers):
     """Tries the parsers passed in order, returning the result of the first successful.
     """
     for parser in parsers:
         try:
-            remainder.push()
             token = parser(remainder)
-            remainder.accept()
             return token
         except NoMatch:
             remainder.pop()
