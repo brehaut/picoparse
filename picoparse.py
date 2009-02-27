@@ -221,6 +221,11 @@ def many_until(these, term):
 def many1(parser):
     return [parser()] + many(parser)
 
+def string(string):
+    for c in string:
+        one_of(c)
+    return string
+
 def remaining():
     tokens = []
     while peek():

@@ -2,7 +2,7 @@
 """
 
 from picoparse import one_of, many, many1, not_one_of, run_parser, tri, commit, optional, fail
-from picoparse import choice
+from picoparse import choice, string, peek
 from functools import partial
 
 named_entities = {
@@ -19,18 +19,21 @@ def compose(f, g):
 def build_string(iterable):
     return u''.join(iterable)
 
-def parse_xml(input):
-    result,rest = run_parser(node, input)
-    print result
-
 open_angle = partial(one_of, '<')
 close_angle = partial(one_of, '>')
 slash = partial(one_of, '/')
 equals = partial(one_of, '=')
 quote = partial(one_of, "\"'")
 whitespace = partial(many, partial(one_of, ' \t\n\r'))
+element_text = compose(build_string, partial(many1, partial(not_one_of, ' \t\r\n<>/=')))
 decimal_digit = partial(one_of, '0123456789')
 hex_decimal_digit = partial(one_of, '0123456789AaBbCcDdEeFf')
+
+def xml():
+    whitespace()
+    optional(processing, None)
+    whitespace()
+    return node()
 
 def entity():
     one_of('&')
@@ -48,7 +51,7 @@ def hex_entity():
     return chr(int(build_string(many1(hex_decimal_digit)), 16))
 
 def dec_entity():
-    return chr(int(build_string(many1(hex_decimal_digit)), 16))
+    return chr(int(build_string(many1(hex_decimal_digit)), 10))
     
 def numeric_entity():
     one_of('#')
@@ -56,14 +59,21 @@ def numeric_entity():
 
 xml_char = partial(choice, partial(not_one_of, '<>&'), entity)
 
-element_text = compose(build_string, partial(many1, partial(not_one_of, ' \t\r\n<>/=')))
-
 def node():
-    return choice(element, text_node)
+    return choice(processing, element,  text_node)
 
 def text_node():
     text = build_string(many1(xml_char))
     return "TEXT", text
+
+@tri
+def processing():
+    whitespace()
+    open_angle()
+    one_of('?')
+    many(partial(not_one_of, '?'))
+    one_of('?')
+    close_angle()
 
 @tri
 def element():
@@ -78,7 +88,7 @@ def element():
 def closed_element():
     slash()
     close_angle()
-    return "NODE", name, attributes, children
+    return []
 
 def open_element(name):
     close_angle()
@@ -98,25 +108,27 @@ def end_element(name):
 @tri
 def attribute():
     whitespace()
-    name = element_text()
+    name = many1(element_text)
     commit()
     whitespace()
     equals()
     whitespace()
     quote()
-    value = build_string(many(partial(not_one_of, "\"'")))
+    value = build_string(many(partial(choice, entity, partial(not_one_of, "\"'"))))
     quote()
     return "ATTR", name, value
 
     
 
-tokens, remaining = run_parser(node, """
-<xml version="1.0">
-    <node foo="bar" baz="bop">
-        this is some node text &amp; it contains an entity
+tokens, remaining = run_parser(xml, """
+<? xml version="1.0" ?>
+<root>
+    <self-closing />
+    <? this processing is ignored ?>
+    <node foo="bar" baz="bo&amp;p">
+        This is some node text &amp; it contains a named entity &#65;nd some &#x41; numeric
     </node>
-    <>
-</xml>
+</root>
 """)
 
 print "nodes:", tokens
