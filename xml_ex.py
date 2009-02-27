@@ -1,8 +1,7 @@
 """This is a simple _example_ of using picoparse. It implements a small, incomplete XML parser
 """
 
-from picoparse import BufferWalker, scan_char, scan_nchar, scan_until, scan_while, choice
-from picoparse import scan_whitespace, many
+from picoparse import one_of, many, not_one_of, run_parser, tri, commit, optional, fail
 from functools import partial
 
 def compose(f, g):
@@ -12,39 +11,55 @@ def build_string(iterable):
     return u''.join(iterable)
 
 def parse_xml(input):
-    buf = BufferWalker(input)
-    result = node(buf)
+    result,rest = run_parser(node, input)
     print result
 
-open_angle = partial(scan_char, '<')
-close_angle = partial(scan_char, '>')
-slash = partial(scan_char, '/')
-equals = partial(scan_char, '=')
-element_text = compose(build_string, partial(scan_until, ' \t\r\n<>/='))
+open_angle = partial(one_of, '<')
+close_angle = partial(one_of, '>')
+slash = partial(one_of, '/')
+equals = partial(one_of, '=')
+quote = partial(one_of, "\"'")
+element_text = compose(build_string, partial(many, partial(not_one_of, ' \t\r\n<>/=')))
+whitespace = partial(many, partial(one_of, ' \t\n\r'))
 
-def node(items):
-    scan_whitespace(items)
-    open_angle(items)
-    name = element_text(items)
-    attributes = many(items, attribute)
-#    attributes = [attribute(items)]
-    print attributes
-    close_angle(items)
-    children = many(items, node)
+@tri
+def node():
+    whitespace()
+    open_angle()
+    name = element_text()
+    if not name:
+        fail()
+    commit()
+    attributes = many(attribute)
+    whitespace()
+    close_angle()
+    children = many(node)
+    optional(partial(end_node, name), None)
     return "NODE", name, attributes, children
 
-def attribute(items):
-    scan_whitespace(items)
-    name = element_text(items)
-    scan_whitespace(items)
-    equals(items)
-    scan_whitespace(items)
-    quote = scan_char("\"'", items)
-    value = build_string(scan_until(quote, items))
-    scan_char(quote, items)
+def end_node(name):
+    whitespace()
+    open_angle()
+    slash()
+    if name != element_text():
+        fail()
+    whitespace()
+    close_angle()
+
+@tri
+def attribute():
+    whitespace()
+    name = element_text()
+    commit()
+    whitespace()
+    equals()
+    whitespace()
+    quote()
+    value = build_string(many(partial(not_one_of, "\"'")))
+    quote()
     return "ATTR", name, value
-    
-    
-parse_xml("""
-<xml version="1.0"><node  foo="bar" baz="bop"></node></xml>
+
+print run_parser(node, """
+<xml version="1.0"><node  foo="bar" baz="bop"></node>
 """)
+

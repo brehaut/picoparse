@@ -160,22 +160,28 @@ def run_parser(parser, input):
     local_ps.value = old
     return result
 
+def any_token():
+    ch = next()
+    if not ch:
+        fail()
+    return ch
+
 def one_of(these):
     ch = peek()
-    if (ch is not None) or (ch not in these):
+    if (ch is None) or (ch not in these):
         fail()
     next()
+    return ch
 
 def not_one_of(these):
     ch = peek()
-    if (ch is not None) or (ch in these):
+    if (ch is None) or (ch in these):
         fail()
     next()
+    return ch
 
 def optional(parser, default):
-    def null_parser():
-        return default
-    return choice(parser, null_parser)
+    return choice(parser, lambda: default)
 
 def notfollowedby(parser):
     failed = object()
@@ -201,16 +207,12 @@ def many(parser):
         results.append(result)
     return results
 
-def tag_result(parser, tag):
-    def fun(): return tag, parser()
-    return fun
-
 def many_until(these, term):
     results = []
     these_tag,term_tag = object(),object()
     while not eof():
-        tag, result = choice(tag_result(these_tag, these),
-                             tag_result(term_tag, term))
+        tag, result = choice(lambda: these_tag, these(),
+                             lambda: term_tag, term())
         if tag == these_tag:
             results.append(result)
         elif tag == term_tag:
@@ -222,6 +224,4 @@ def remaining():
         tokens.append(peek())
         next()
     return tokens
-
-################################################################
 
