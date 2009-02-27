@@ -25,8 +25,10 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 from functools import partial
+import threading
 
 class NoMatch(Exception): pass
+class NoMatchCantBacktrack(Exception): pass
 
 class BufferWalker(object):
     """BufferWalker wraps up an iterable and provides an API for infinite lookahead
@@ -51,7 +53,8 @@ class BufferWalker(object):
         self.buffer = [self.source.next()]
         self.index = 0
         self.len = len(self.buffer)
-        self.stack = []
+        self.depth = 0
+        self.offset = 0
     
     def __nonzero__(self):
         return self.peek() is not None
@@ -78,110 +81,150 @@ class BufferWalker(object):
             self.index = 0
             return None
         return self.peek()
-        
+    
     def peek(self):
         """Returns the current item or None"""
         if self.index >= self.len:
             self._fill((self.index - self.len) + 1) 
         return self.buffer[self.index] if self.index < self.len else None
-
-    def push(self):
-        """Remember the current location."""
-        self.stack.append(self.index)
-        
-    def pop(self):
-        """Return to the previously remember location."""
-        if self.stack:
-            self.index = self.stack.pop()
-        
-    def accept(self):
-        """Refresh the stack. 
-        the current index is the start of the buffer, processed data is released.
-        """
+    
+    def attempt(self):
+        result = self.depth
+        self.depth += 1
+        return result
+    
+    def fail(self):
+        raise NoMatch()
+    
+    def commit(self, depth = None):
+        if self.depth < 0:
+            raise Exception("commit without corresponding attempt")
+        if depth is None:
+            self.depth -= 1
+        elif self.depth > depth:
+            self.depth = depth
+        if self.depth == 0:
+            self.cut()
+    
+    def cut(self):
         self.buffer = self.buffer[self.index:]
         self.len = len(self.buffer)
-        self.stack = []
+        self.offset += self.index
         self.index = 0
-
-def many(remainder, parser):
-    """Tries one parser over and over until it fails. Returns sucessive results in a generator.
-    """
-    result = []
-    while remainder:
-        try:
-            remainder.push()
-            result.append(parser(remainder))
-            remainder.accept()
-        except NoMatch:
-            remainder.pop()
-            return result
-
-def choice(remainder, parsers):
-    """Tries the parsers passed in order, returning the result of the first successful.
-    """
-    for parser in parsers:
-        try:
-            remainder.push()
-            token = parser(remainder)
-            remainder.accept()
-            return token
-        except NoMatch:
-            remainder.pop()
-    else:
-        raise NoMatch()
-
-
-def in_set(item, possibles):
-    """is the given item not None and in the set of possibles.
-    """
-    return  (item is not None) and (item in possibles)
-
-def not_in_set(item, possibles):
-    """Is the given item not None and not in the set of possibles.
-    """
-    return  (item is not None) and (item not in possibles)
-
-def scan_char(possibles, items):
-    """returns the current item if in the set of possibles, and steps forward,
-    otherwise raises NoMatch
-    """
-    ch = items.peek()
-    if not_in_set(ch, possibles):
-        raise NoMatch()
-    items.next()
-    return ch
-
-def scan_nchar(possibles, items):
-    """returns the current item if not in the set of possibles, and steps forward,
-    otherwise raises NoMatch. The inverse of scan_char
-    """
-    ch = items.peek()
-    if in_set(ch, possibles):
-        raise NoMatch()
-    items.next()
-    return ch
-
-def scan_collect(scanner, possibles, items):
-    """Applies a scanner to items repeatedly with possibles as its first arg"""
-    try: 
-        match = []
-        while items.peek():
-            match.append(scanner(possibles, items))
-    except NoMatch:
-        return match
-
-scan_while = partial(scan_collect, scan_char)
-scan_until = partial(scan_collect, scan_nchar)
-scan_whitespace = partial(scan_while, ' \t\n\r')
-
-def rest(buf):
-    result = []
-    while True:
-        token = buf.next()
-        if token:
-            result.append(token)
+        self.depth = 0
+    
+    def choice(self, *parsers):
+        if not parsers:
+            raise NoMatch()
+        start_offset = self.offset
+        start_index = self.index
+        start_depth = self.depth
+        for parser in parsers:
+            try:
+                return parser()
+            except NoMatch:
+                if self.offset != start_offset or self.depth < start_depth:
+                    raise
+                if self.depth > start_depth:
+                    self.depth = start_depth
+                self.index = start_index
         else:
-            break
-    return u''.join(result)
+            raise NoMatch()
 
+################################################################
+
+local_ps = threading.local()
+
+def ps_fun(name):
+    def fun(*args, **kwargs):
+        return getattr(local_ps.value, name)(*args, **kwargs)
+    return fun
+
+################################################################
+
+next    = ps_fun('next')
+prev    = ps_fun('prev')
+peek    = ps_fun('peek')
+attempt = ps_fun('attempt')
+fail    = ps_fun('fail')
+commit  = ps_fun('commit')
+cut     = ps_fun('cut')
+choice  = ps_fun('choice')
+
+def eof(): return bool(local_ps.value)
+
+def run_parser(parser, input):
+    old = getattr(local_ps, 'value', None)
+    local_ps.value = BufferWalker(input)
+    result = parser(), remaining()
+    local_ps.value = old
+    return result
+
+def any_token():
+    ch = next()
+    if not ch:
+        fail()
+    return ch
+
+def one_of(these):
+    ch = peek()
+    if (ch is None) or (ch not in these):
+        fail()
+    next()
+    return ch
+
+def not_one_of(these):
+    ch = peek()
+    if (ch is None) or (ch in these):
+        fail()
+    next()
+    return ch
+
+def optional(parser, default):
+    return choice(parser, lambda: default)
+
+def notfollowedby(parser):
+    failed = object()
+    result = optional(parser, failed)
+    if result != failed:
+        fail()
+
+def tri(parser):
+    def fun(*args, **kwargs):
+        depth = attempt()
+        result = parser(*args, **kwargs)
+        commit(depth)
+        return result
+    return fun
+
+def many(parser):
+    results = []
+    terminate = object()
+    while local_ps.value:
+        result = optional(parser, terminate)
+        if result == terminate:
+            break
+        results.append(result)
+    return results
+
+def many_until(these, term):
+    results = []
+    these_tag,term_tag = object(),object()
+    while not eof():
+        tag, result = choice(lambda: these_tag, these(),
+                             lambda: term_tag, term())
+        if tag == these_tag:
+            results.append(result)
+        elif tag == term_tag:
+            return result, results
+
+def many1(parser):
+    return [parser()] + many(parser)
+
+def remaining():
+    tokens = []
+    while peek():
+        tokens.append(peek())
+        next()
+    return tokens
 
