@@ -5,6 +5,14 @@ from picoparse import BufferWalker, scan_char, scan_nchar, scan_until, scan_whil
 from picoparse import scan_whitespace, many
 from functools import partial
 
+named_entities = {
+    'amp':'&',
+    'quot':'"',
+    'apos':"'",
+    'lt':'<',
+    'gt':'>',
+}
+
 def compose(f, g):
     return lambda *args, **kwargs: f(g(*args, **kwargs))
 
@@ -27,8 +35,6 @@ def node(items):
     open_angle(items)
     name = element_text(items)
     attributes = many(items, attribute)
-#    attributes = [attribute(items)]
-    print attributes
     close_angle(items)
     children = many(items, node)
     return "NODE", name, attributes, children
@@ -46,5 +52,8 @@ def attribute(items):
     
     
 parse_xml("""
-<xml version="1.0"><node  foo="bar" baz="bop"></node></xml>
+<xml version="1.0">
+   <node  foo="bar" baz="bop">
+   </node>
+</xml>
 """)
