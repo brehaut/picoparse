@@ -103,32 +103,32 @@ class BufferWalker(object):
         self.stack = []
         self.index = 0
 
-
-def generate_parsers(parsers):
-    """Given a list of top level parsers (in order), generates a top level parser.
+def many(remainder, parser):
+    """Tries one parser over and over until it fails. Returns sucessive results in a generator.
     """
-    def lexer(input):
-        for result in choice(BufferWalker(input), parsers):
-            yield result
-    return lexer
-    
-# parser implementation functions
-def choice(remainder, parsers):
-    """Trys the parsers passed in order, returning the result of the first successful.
-    """
+    result = []
     while remainder:
-        for tokeniser in tokenisers:
-            try:
-                remainder.push()
-                token = tokeniser(remainder)
-                print token
-                remainder.accept()
-                yield token
-                break
-            except NoMatch:
-                remainder.pop()
-        else:
-            raise NoMatch()
+        try:
+            remainder.push()
+            result.append(parser(remainder))
+            remainder.accept()
+        except NoMatch:
+            remainder.pop()
+            return result
+
+def choice(remainder, parsers):
+    """Tries the parsers passed in order, returning the result of the first successful.
+    """
+    for parser in parsers:
+        try:
+            remainder.push()
+            token = parser(remainder)
+            remainder.accept()
+            return token
+        except NoMatch:
+            remainder.pop()
+    else:
+        raise NoMatch()
 
 def in_set(item, possibles):
     """is the given item not None and in the set of possibles.
@@ -172,3 +172,54 @@ def scan_collect(scanner, possibles, items):
 scan_while = partial(scan_collect, scan_char)
 scan_until = partial(scan_collect, scan_nchar)
 scan_whitespace = partial(scan_while, ' \t\n\r')
+
+def rest(buf):
+    result = []
+    while True:
+        token = buf.next()
+        if token:
+            result.append(token)
+        else:
+            break
+    return u''.join(result)
+
+def runparser(parser, input):
+    buf = BufferWalker(input)
+    result = parser(buf)
+    print 'result:', result
+    print 'remaining:', rest(buf)
+
+def parser1(ps):
+    return many(ps, parser2)
+
+def parser2(ps):
+    return choice(ps, [parser3, parser4])
+
+def parser3(ps):
+    return choice(ps, [parser5, parser6])
+
+def parser4(ps):
+    return choice(ps, [parser7, parser8])
+
+def parser5(ps):
+    scan_char('a', ps)
+    scan_char('b', ps)
+    return 'ab'
+
+def parser6(ps):
+    scan_char('b', ps)
+    scan_char('a', ps)
+    return 'ba'
+
+def parser7(ps):
+    scan_char('a', ps)
+    scan_char('a', ps)
+    return 'aa'
+
+def parser8(ps):
+    scan_char('b', ps)
+    scan_char('b', ps)
+    return 'bb'
+
+runparser(parser1, "abacadaae")
+
