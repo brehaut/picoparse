@@ -104,7 +104,7 @@ class BufferWalker(object):
         self.index = 0
 
 
-def generate_parsers(parsers):
+def generate_parser(parsers):
     """Given a list of top level parsers (in order), generates a top level parser.
     """
     def lexer(input):
@@ -117,7 +117,7 @@ def choice(remainder, parsers):
     """Trys the parsers passed in order, returning the result of the first successful.
     """
     while remainder:
-        for tokeniser in tokenisers:
+        for parser in parsers:
             try:
                 remainder.push()
                 token = tokeniser(remainder)
