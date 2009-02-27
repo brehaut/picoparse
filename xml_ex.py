@@ -1,4 +1,7 @@
-"""This is a simple _example_ of using picoparse. It implements a small, incomplete XML parser
+"""This is a simple _example_ of using picoparse to parse XML - not for real use. 
+
+This example looks at XML as it is a textual stucture that the majority are familiar with. 
+
 """
 # Copyright (c) 2008, Andrew Brehaut, Steven Ashley
 # All rights reserved.
@@ -73,7 +76,7 @@ def hex_entity():
     return chr(int(build_string(many1(hex_decimal_digit)), 16))
 
 def dec_entity():
-    return chr(int(build_string(many1(dec_decimal_digit)), 10))
+    return chr(int(build_string(many1(decimal_digit)), 10))
     
 def numeric_entity():
     one_of('#')
@@ -153,6 +156,8 @@ tokens, remaining = run_parser(xml, """
     </node>
 </root>
 """)
+
+
 
 print "nodes:", tokens
 print

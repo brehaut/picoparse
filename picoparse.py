@@ -221,6 +221,9 @@ def many_until(these, term):
 def many1(parser):
     return [parser()] + many(parser)
 
+def n_of(parser, n):
+    return [parser() for i in range(n)]
+
 def string(string):
     for c in string:
         one_of(c)
