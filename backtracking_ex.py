@@ -1,39 +1,42 @@
-def runparser(parser, input):
-    buf = BufferWalker(input)
-    result = parser(buf)
-    print 'result:', result
-    print 'remaining:', rest(buf)
+from picoparse import next, prev, peek, attempt, fail, commit, cut, choice, run_parser, optional, many, remaining, tri
 
-def parser1(ps):
-    return many(ps, parser2)
+def char(cs):
+    c = peek()
+    if c is not None and c not in cs:
+        fail()
+    next()
 
-def parser2(ps):
-    return choice(ps, [parser3, parser4])
+def parser1():
+    return many(parser2)
 
-def parser3(ps):
-    return choice(ps, [parser5, parser6])
+def parser2():
+    return choice(parser3, parser4)
 
-def parser4(ps):
-    return choice(ps, [parser7, parser8])
+def parser3():
+    return choice(tri(parser5), tri(parser6))
 
-def parser5(ps):
-    scan_char('a', ps)
-    scan_char('b', ps)
-    return 'ab'
+def parser4():
+    return choice(tri(parser7), tri(parser8))
 
-def parser6(ps):
-    scan_char('b', ps)
-    scan_char('a', ps)
-    return 'ba'
-
-def parser7(ps):
-    scan_char('a', ps)
-    scan_char('a', ps)
+@tri
+def parser5():
+    char('a')
+    char('a')
     return 'aa'
 
-def parser8(ps):
-    scan_char('b', ps)
-    scan_char('b', ps)
+def parser6():
+    char('b')
+    char('a')
+    return 'ba'
+
+def parser7():
+    char('a')
+    char('b')
+    return 'ab'
+
+def parser8():
+    char('b')
+    char('b')
     return 'bb'
 
-runparser(parser1, "abacadaae")
+print run_parser(parser1, "aaabbbba")
