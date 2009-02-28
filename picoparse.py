@@ -28,7 +28,8 @@ from functools import partial
 import threading
 
 class NoMatch(Exception): pass
-class NoMatchCantBacktrack(Exception): pass
+
+
 
 class BufferWalker(object):
     """BufferWalker wraps up an iterable and provides an API for infinite lookahead
@@ -48,13 +49,14 @@ class BufferWalker(object):
     You can test the BufferWalker for Truthiness; if there is still parsable input then 
     it will be truthy, if not, falsy.
     """
-    def __init__(self, source):
+    def __init__(self, source, fconcat):
         self.source = iter(source)
         self.buffer = [self.source.next()]
         self.index = 0
         self.len = len(self.buffer)
         self.depth = 0
         self.offset = 0
+        self.fconcat = fconcat
     
     def __nonzero__(self):
         return self.peek() is not None
@@ -71,7 +73,10 @@ class BufferWalker(object):
     def next(self):
         """Returns the next item or None"""
         self.index += 1
-        return self.peek()
+        t = self.peek()
+        if self.depth == 0:
+            cut()
+        return t
     
     def prev(self):
         """Returns the previous item, or None
@@ -112,6 +117,7 @@ class BufferWalker(object):
         self.offset += self.index
         self.index = 0
         self.depth = 0
+        #print "Cutting", self.offset
     
     def choice(self, *parsers):
         if not parsers:
@@ -130,6 +136,9 @@ class BufferWalker(object):
                 self.index = start_index
         else:
             raise NoMatch()
+    
+    def concat(self, tokens):
+        return self.fconcat(tokens)
 
 ################################################################
 
@@ -150,14 +159,20 @@ fail    = ps_fun('fail')
 commit  = ps_fun('commit')
 cut     = ps_fun('cut')
 choice  = ps_fun('choice')
+concat  = ps_fun('concat')
 
 def is_eof(): return bool(local_ps.value)
 
-def run_parser(parser, input):
+def run_parser(parser, input, fconcat=lambda x: x):
     old = getattr(local_ps, 'value', None)
-    local_ps.value = BufferWalker(input)
-    result = parser(), remaining()
-    local_ps.value = old
+    local_ps.value = BufferWalker(input, fconcat)
+    try:
+      result = parser(), remaining()
+    except NoMatch:
+      print remaining()
+      raise
+    finally:
+      local_ps.value = old
     return result
 
 def any_token():
@@ -193,7 +208,7 @@ def optional(parser, default):
 
 def notfollowedby(parser):
     failed = object()
-    result = optional(parser, failed)
+    result = optional(tri(parser), failed)
     if result != failed:
         fail()
 
@@ -237,7 +252,7 @@ def n_of(parser, n):
 def string(string):
     for c in string:
         one_of(c)
-    return string
+    return concat(string)
 
 def remaining():
     tokens = []

@@ -73,7 +73,7 @@ def entity():
     return ent
 
 def named_entity():
-    name = build_string(many1(partial(not_one_of,';')))
+    name = build_string(many1(partial(not_one_of,';#')))
     if name not in named_entities: fail()
     return named_entities[name]
 
@@ -132,6 +132,7 @@ def processing(parser = False):
 
     open_angle()
     one_of('?')
+    commit()
     result = parser()
     whitespace()
     
@@ -167,14 +168,12 @@ comment = fail
 # Node is the general purpose node parser. it will consume any white space and then 
 # choose the first parser from the set provided that matches the input
 def node():
-    whitespace()
     return choice(processing, element, text_node)
 
 def text_node():
     text = build_string(many1(xml_char))
     return "TEXT", text
 
-@tri
 def doctype():
     open_angle()
     one_of('!')
@@ -189,7 +188,6 @@ def element():
     commit()
     attributes = many(attribute)
     whitespace()
-    cut()
     return "NODE", name, attributes, choice(closed_element, partial(open_element, name))
 
 def closed_element():
@@ -200,13 +198,16 @@ def closed_element():
 def open_element(name):
     close_angle()
     children = many(node)
-    optional(partial(end_element, name), None)    
+    #optional(partial(end_element, name), None)    
+    end_element(name)
     return children
 
+@tri
 def end_element(name):
     whitespace()
     open_angle()
     slash()
+    commit()
     if name != element_text():
         fail()
     whitespace()
