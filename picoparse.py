@@ -27,7 +27,9 @@
 from functools import partial
 import threading
 
-class NoMatch(Exception): pass
+class NoMatch(Exception):
+    def __str__(self):
+        return "picoparse.NoMatch: " + getattr(self, 'remaining', '')
 
 class BufferWalker(object):
     """BufferWalker wraps up an iterable and provides an API for infinite lookahead
@@ -109,7 +111,6 @@ class BufferWalker(object):
             self.cut()
     
     def cut(self):
-        print 'Cutting', self.buffer[:self.index]
         self.buffer = self.buffer[self.index:]
         self.len = len(self.buffer)
         self.offset += self.index
@@ -136,39 +137,41 @@ class BufferWalker(object):
         else:
             raise NoMatch()
 
-################################################################
-
 local_ps = threading.local()
 
-def ps_fun(name):
-    def fun(*args, **kwargs):
-        return getattr(local_ps.value, name)(*args, **kwargs)
-    return fun
-
 ################################################################
+# Picoparse core API
 
-next    = ps_fun('next')
-prev    = ps_fun('prev')
-peek    = ps_fun('peek')
-attempt = ps_fun('attempt')
-fail    = ps_fun('fail')
-commit  = ps_fun('commit')
-cut     = ps_fun('cut')
-choice  = ps_fun('choice')
+next =    lambda: local_ps.value.next()
+peek =    lambda: local_ps.value.peek()
+fail =    lambda: local_ps.value.fail()
+commit =  lambda: local_ps.value.commit()
+cut =     lambda: local_ps.value.cut()
+choice =  lambda *options: local_ps.value.choice(*options)
+is_eof =  lambda: bool(local_ps.value)
 
-def is_eof(): return bool(local_ps.value)
+def tri(parser):
+    def tri_block(*args, **kwargs):
+        depth = local_ps.value.attempt()
+        result = parser(*args, **kwargs)
+        local_ps.value.commit(depth)
+        return result
+    return tri_block
 
 def run_parser(parser, input):
     old = getattr(local_ps, 'value', None)
     local_ps.value = BufferWalker(input)
     try:
       result = parser(), remaining()
-    except NoMatch:
-      print remaining()
+    except NoMatch, e:
+      e.message = "picoparse.NoMatch\nRemaining:" + repr(remaining())
       raise
     finally:
       local_ps.value = old
     return result
+
+################################################################
+# Picoparse additional API
 
 def any_token():
     ch = peek()
@@ -209,14 +212,6 @@ def notfollowedby(parser):
         fail()
 
 eof = partial(notfollowedby, any_token)
-
-def tri(parser):
-    def tri_block(*args, **kwargs):
-        depth = attempt()
-        result = parser(*args, **kwargs)
-        commit(depth)
-        return result
-    return tri_block
 
 def many(parser):
     results = []
