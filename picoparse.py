@@ -151,7 +151,7 @@ commit  = ps_fun('commit')
 cut     = ps_fun('cut')
 choice  = ps_fun('choice')
 
-def eof(): return bool(local_ps.value)
+def is_eof(): return bool(local_ps.value)
 
 def run_parser(parser, input):
     old = getattr(local_ps, 'value', None)
@@ -168,15 +168,23 @@ def any_token():
 
 def one_of(these):
     ch = peek()
-    if (ch is None) or (ch not in these):
-        fail()
+    try:
+        if (ch is None) or (ch not in these):
+            fail()
+    except TypeError:
+        if ch != these:
+            fail()
     next()
     return ch
 
 def not_one_of(these):
     ch = peek()
-    if (ch is None) or (ch in these):
-        fail()
+    try:
+        if (ch is None) or (ch in these):
+            fail()
+    except TypeError:
+        if ch != these:
+            fail()
     next()
     return ch
 
@@ -188,6 +196,8 @@ def notfollowedby(parser):
     result = optional(parser, failed)
     if result != failed:
         fail()
+
+eof = partial(notfollowedby, any_token)
 
 def tri(parser):
     def fun(*args, **kwargs):
@@ -210,7 +220,7 @@ def many(parser):
 def many_until(these, term):
     results = []
     these_tag,term_tag = object(),object()
-    while not eof():
+    while not is_eof():
         tag, result = choice(lambda: these_tag, these(),
                              lambda: term_tag, term())
         if tag == these_tag:

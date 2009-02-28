@@ -28,7 +28,7 @@ Comments throughout the file explain what is going on
 # POSSIBILITY OF SUCH DAMAGE.
 
 from picoparse import one_of, many, many1, not_one_of, run_parser, tri, commit, optional, fail
-from picoparse import choice, string, peek, cut, string
+from picoparse import choice, string, peek, cut, string, eof
 from functools import partial
 
 # some general functions to help build parsers; build string exists so we can compose it 
@@ -104,8 +104,10 @@ def quoted_parser(parser):
 def xml():
     prolog()
     whitespace()
-    return element()
-    
+    n = element()
+    eof()
+    return n
+
 def prolog():
     """
     [22]   	prolog	   ::=   	 XMLDecl? Misc* (doctypedecl Misc*)?
