@@ -118,10 +118,10 @@ def prolog():
     [26]   	VersionNum	   ::=   	'1.' [0-9]+
     [27]   	Misc	   ::=   	 Comment | PI | S"""
     whitespace()
-    print optional(tri(partial(processing, xmldecl)), None)
-    print many(partial(choice, processing, comment, whitespace1))
-    print optional(doctype, None)    
-    print many(partial(choice, processing, comment, whitespace1))
+    optional(tri(partial(processing, xmldecl)), None)
+    many(partial(choice, processing, comment, whitespace1))
+    optional(doctype, None)    
+    many(partial(choice, processing, comment, whitespace1))
 
 # The xml declaration could be parsed with a specialised processing directive, or it can be
 # handled as a special case. We are going to handle it as a specialisation of the processing.
@@ -129,7 +129,7 @@ def prolog():
 # or it will just consume the body 
 @tri
 def processing(parser = False):
-    parser = parser if parser else partial(many, partial(not_one_of, '?'))
+    parser = parser if parser else compose(build_string, partial(many, partial(not_one_of, '?')))
 
     open_angle()
     one_of('?')
@@ -237,12 +237,12 @@ tokens, remaining = parse_xml("""
 
 <!-- a comment -->
 <root>
+    <!-- another comment -->
     <self-closing />
     <? this processing is ignored ?>
     <node foo="bar" baz="bo&amp;p">
         This is some node text &amp; it contains a named entity &#65;nd some &#x41; numeric
     </node>
-<!-- ??? -->
 </root>
 """)
 
