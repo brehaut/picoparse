@@ -28,7 +28,7 @@ Comments throughout the file explain what is going on
 # POSSIBILITY OF SUCH DAMAGE.
 
 from picoparse import one_of, many, many1, not_one_of, run_parser, tri, commit, optional, fail
-from picoparse import choice, string, peek, cut, string, eof
+from picoparse import choice, string, peek, cut, string, eof, many_until, any_token
 from functools import partial
 
 # some general functions to help build parsers; build string exists so we can compose it 
@@ -117,7 +117,7 @@ def prolog():
     [26]   	VersionNum	   ::=   	'1.' [0-9]+
     [27]   	Misc	   ::=   	 Comment | PI | S"""
     whitespace()
-    print optional(partial(processing, xmldecl), None)
+    optional(partial(processing, xmldecl), None)
     many(partial(choice, processing, comment, whitespace1))
     optional(doctype, None)    
     many(partial(choice, processing, comment, whitespace1))
@@ -162,8 +162,12 @@ def version_num():
 def standalone():
     return choice(partial(string, 'yes'), partial(string, 'no'))
 
-
-comment = fail
+@tri
+def comment():
+    string("<!--")
+    commit()
+    result = many_until(any_token, tri(partial(string, "-->")))
+    return "COMMENT", result
 
 # Node is the general purpose node parser. it will consume any white space and then 
 # choose the first parser from the set provided that matches the input
@@ -198,7 +202,6 @@ def closed_element():
 def open_element(name):
     close_angle()
     children = many(node)
-    #optional(partial(end_element, name), None)    
     end_element(name)
     return children
 
@@ -223,26 +226,26 @@ def attribute():
     whitespace()
     return "ATTR", name, quoted_parser(compose(build_string, partial(many, partial(choice, entity, partial(not_one_of, "\"'")))))
 
-parse_xml = partial(run_parser, xml)
-    
+def parse_xml(input):
+    return run_parser(xml, input, build_string)
 
 tokens, remaining = parse_xml("""
 <?xml version="1.0" ?>
 
 <!DOCTYPE MyDoctype>
 
+<!-- a comment -->
 <root>
     <self-closing />
     <? this processing is ignored ?>
     <node foo="bar" baz="bo&amp;p">
         This is some node text &amp; it contains a named entity &#65;nd some &#x41; numeric
     </node>
-</root>
-""")
+</root>""")
 
 #tokens, remaining = run_parser(xml, file('/Users/andrew/Music/iTunes/iTunes Music Library.xml').read())
 
 print "nodes:", tokens
 print
-print "remaining:", build_string(remaining)
+print "remaining:", remaining
 

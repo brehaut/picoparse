@@ -26,6 +26,7 @@
 
 from functools import partial
 import threading
+import pdb
 
 class NoMatch(Exception): pass
 
@@ -130,6 +131,8 @@ class BufferWalker(object):
                 return parser()
             except NoMatch:
                 if self.offset != start_offset or self.depth < start_depth:
+                    if self.depth < start_depth:
+                        raise Exception("Commit / cut called")
                     raise
                 if self.depth > start_depth:
                     self.depth = start_depth
@@ -163,13 +166,13 @@ concat  = ps_fun('concat')
 
 def is_eof(): return bool(local_ps.value)
 
-def run_parser(parser, input, fconcat=lambda x: x):
+def run_parser(parser, input, concat=lambda x: x):
     old = getattr(local_ps, 'value', None)
-    local_ps.value = BufferWalker(input, fconcat)
+    local_ps.value = BufferWalker(input, concat)
     try:
       result = parser(), remaining()
     except NoMatch:
-      print remaining()
+      print concat(remaining())
       raise
     finally:
       local_ps.value = old
@@ -215,12 +218,12 @@ def notfollowedby(parser):
 eof = partial(notfollowedby, any_token)
 
 def tri(parser):
-    def fun(*args, **kwargs):
+    def tri_block(*args, **kwargs):
         depth = attempt()
         result = parser(*args, **kwargs)
         commit(depth)
         return result
-    return fun
+    return tri_block
 
 def many(parser):
     results = []
@@ -232,16 +235,20 @@ def many(parser):
         results.append(result)
     return results
 
+def tag(t, parser):
+    def tagged():
+        return t, parser()
+    return tagged
+
 def many_until(these, term):
     results = []
-    these_tag,term_tag = object(),object()
-    while not is_eof():
-        tag, result = choice(lambda: these_tag, these(),
-                             lambda: term_tag, term())
-        if tag == these_tag:
-            results.append(result)
-        elif tag == term_tag:
+    while True:
+        stop, result = choice(tag(True, term),
+                              tag(False, these))
+        if stop:
             return result, results
+        else:
+            results.append(result)
 
 def many1(parser):
     return [parser()] + many(parser)
