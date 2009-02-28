@@ -26,6 +26,7 @@
 
 from functools import partial
 import threading
+import pdb
 
 class NoMatch(Exception): pass
 
@@ -49,14 +50,13 @@ class BufferWalker(object):
     You can test the BufferWalker for Truthiness; if there is still parsable input then 
     it will be truthy, if not, falsy.
     """
-    def __init__(self, source, fconcat):
+    def __init__(self, source):
         self.source = iter(source)
         self.buffer = [self.source.next()]
         self.index = 0
         self.len = len(self.buffer)
         self.depth = 0
         self.offset = 0
-        self.fconcat = fconcat
     
     def __nonzero__(self):
         return self.peek() is not None
@@ -130,15 +130,14 @@ class BufferWalker(object):
                 return parser()
             except NoMatch:
                 if self.offset != start_offset or self.depth < start_depth:
+                    if self.depth < start_depth:
+                        raise Exception("Commit / cut called")
                     raise
                 if self.depth > start_depth:
                     self.depth = start_depth
                 self.index = start_index
         else:
             raise NoMatch()
-    
-    def concat(self, tokens):
-        return self.fconcat(tokens)
 
 ################################################################
 
@@ -159,13 +158,12 @@ fail    = ps_fun('fail')
 commit  = ps_fun('commit')
 cut     = ps_fun('cut')
 choice  = ps_fun('choice')
-concat  = ps_fun('concat')
 
 def is_eof(): return bool(local_ps.value)
 
-def run_parser(parser, input, fconcat=lambda x: x):
+def run_parser(parser, input):
     old = getattr(local_ps, 'value', None)
-    local_ps.value = BufferWalker(input, fconcat)
+    local_ps.value = BufferWalker(input)
     try:
       result = parser(), remaining()
     except NoMatch:
@@ -215,12 +213,12 @@ def notfollowedby(parser):
 eof = partial(notfollowedby, any_token)
 
 def tri(parser):
-    def fun(*args, **kwargs):
+    def tri_block(*args, **kwargs):
         depth = attempt()
         result = parser(*args, **kwargs)
         commit(depth)
         return result
-    return fun
+    return tri_block
 
 def many(parser):
     results = []
@@ -232,16 +230,20 @@ def many(parser):
         results.append(result)
     return results
 
+def tag(t, parser):
+    def tagged():
+        return t, parser()
+    return tagged
+
 def many_until(these, term):
     results = []
-    these_tag,term_tag = object(),object()
-    while not is_eof():
-        tag, result = choice(lambda: these_tag, these(),
-                             lambda: term_tag, term())
-        if tag == these_tag:
-            results.append(result)
-        elif tag == term_tag:
+    while True:
+        stop, result = choice(tag(True, term),
+                              tag(False, these))
+        if stop:
             return result, results
+        else:
+            results.append(result)
 
 def many1(parser):
     return [parser()] + many(parser)
@@ -252,7 +254,7 @@ def n_of(parser, n):
 def string(string):
     for c in string:
         one_of(c)
-    return concat(string)
+    return string
 
 def remaining():
     tokens = []
