@@ -94,7 +94,7 @@ xml_char = partial(choice, partial(not_one_of, '<>&'), entity)
 # we want to be able to parse quoted strings, sometimes caring what the form of the content is
 def quoted_parser(parser):
     quote_char = quote()
-    value, _ = many_until(any_token, tri(partial(one_of, quote_char)))
+    value, _ = many_until(any_token, partial(one_of, quote_char))
     return build_string(value)
     
 # now we are ready to start implementing the main document parsers.
