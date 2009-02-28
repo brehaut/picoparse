@@ -94,9 +94,8 @@ xml_char = partial(choice, partial(not_one_of, '<>&'), entity)
 # we want to be able to parse quoted strings, sometimes caring what the form of the content is
 def quoted_parser(parser):
     quote_char = quote()
-    value = parser()
-    one_of(quote_char)
-    return value
+    value, _ = many_until(any_token, tri(partial(one_of, quote_char)))
+    return build_string(value)
     
 # now we are ready to start implementing the main document parsers.
 # xml is our entrypoint parser. The XML spec requires a specific (but optional) prolog
@@ -110,13 +109,6 @@ def xml():
     return n
 
 def prolog():
-    """
-    [22]   	prolog	   ::=   	 XMLDecl? Misc* (doctypedecl Misc*)?
-    [23]   	XMLDecl	   ::=   	'<?xml' VersionInfo EncodingDecl? SDDecl? S? '?>'
-    [24]   	VersionInfo	   ::=   	 S 'version' Eq ("'" VersionNum "'" | '"' VersionNum '"')
-    [25]   	Eq	   ::=   	 S? '=' S?
-    [26]   	VersionNum	   ::=   	'1.' [0-9]+
-    [27]   	Misc	   ::=   	 Comment | PI | S"""
     whitespace()
     print optional(tri(partial(processing, xmldecl)), None)
     print many(partial(choice, processing, comment, whitespace1))
@@ -239,7 +231,7 @@ tokens, remaining = parse_xml("""
 <root>
     <self-closing />
     <? this processing is ignored ?>
-    <node foo="bar" baz="bo&amp;p">
+    <node foo="bar" baz="bo&amp;p'">
         This is some node text &amp; it contains a named entity &#65;nd some &#x41; numeric
     </node>
 <!-- ??? -->
