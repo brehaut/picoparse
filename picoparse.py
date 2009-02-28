@@ -26,11 +26,8 @@
 
 from functools import partial
 import threading
-import pdb
 
 class NoMatch(Exception): pass
-
-
 
 class BufferWalker(object):
     """BufferWalker wraps up an iterable and provides an API for infinite lookahead
@@ -112,12 +109,12 @@ class BufferWalker(object):
             self.cut()
     
     def cut(self):
+        print 'Cutting', self.buffer[:self.index]
         self.buffer = self.buffer[self.index:]
         self.len = len(self.buffer)
         self.offset += self.index
         self.index = 0
         self.depth = 0
-        #print "Cutting", self.offset
     
     def choice(self, *parsers):
         if not parsers:
@@ -174,9 +171,10 @@ def run_parser(parser, input):
     return result
 
 def any_token():
-    ch = next()
+    ch = peek()
     if not ch:
         fail()
+    next()
     return ch
 
 def one_of(these):
@@ -241,7 +239,7 @@ def many_until(these, term):
         stop, result = choice(tag(True, term),
                               tag(False, these))
         if stop:
-            return result, results
+            return results, result
         else:
             results.append(result)
 
