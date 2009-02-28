@@ -172,15 +172,17 @@ def comment():
 # Node is the general purpose node parser. it will consume any white space and then 
 # choose the first parser from the set provided that matches the input
 def node():
-    return choice(processing, element, text_node)
+    return choice(processing, element, text_node, comment)
 
 def text_node():
     text = build_string(many1(xml_char))
     return "TEXT", text
 
+@tri
 def doctype():
     open_angle()
     one_of('!')
+    commit()
     string('DOCTYPE')
     many(partial(not_one_of, '>'))
     close_angle()
@@ -226,8 +228,7 @@ def attribute():
     whitespace()
     return "ATTR", name, quoted_parser(compose(build_string, partial(many, partial(choice, entity, partial(not_one_of, "\"'")))))
 
-def parse_xml(input):
-    return run_parser(xml, input, build_string)
+parse_xml = partial(run_parser, xml)
 
 tokens, remaining = parse_xml("""
 <?xml version="1.0" ?>
@@ -247,5 +248,5 @@ tokens, remaining = parse_xml("""
 
 print "nodes:", tokens
 print
-print "remaining:", remaining
+print "remaining:", build_string(remaining)
 

@@ -50,14 +50,13 @@ class BufferWalker(object):
     You can test the BufferWalker for Truthiness; if there is still parsable input then 
     it will be truthy, if not, falsy.
     """
-    def __init__(self, source, fconcat):
+    def __init__(self, source):
         self.source = iter(source)
         self.buffer = [self.source.next()]
         self.index = 0
         self.len = len(self.buffer)
         self.depth = 0
         self.offset = 0
-        self.fconcat = fconcat
     
     def __nonzero__(self):
         return self.peek() is not None
@@ -139,9 +138,6 @@ class BufferWalker(object):
                 self.index = start_index
         else:
             raise NoMatch()
-    
-    def concat(self, tokens):
-        return self.fconcat(tokens)
 
 ################################################################
 
@@ -162,17 +158,16 @@ fail    = ps_fun('fail')
 commit  = ps_fun('commit')
 cut     = ps_fun('cut')
 choice  = ps_fun('choice')
-concat  = ps_fun('concat')
 
 def is_eof(): return bool(local_ps.value)
 
-def run_parser(parser, input, concat=lambda x: x):
+def run_parser(parser, input):
     old = getattr(local_ps, 'value', None)
-    local_ps.value = BufferWalker(input, concat)
+    local_ps.value = BufferWalker(input)
     try:
       result = parser(), remaining()
     except NoMatch:
-      print concat(remaining())
+      print remaining()
       raise
     finally:
       local_ps.value = old
@@ -259,7 +254,7 @@ def n_of(parser, n):
 def string(string):
     for c in string:
         one_of(c)
-    return concat(string)
+    return string
 
 def remaining():
     tokens = []
