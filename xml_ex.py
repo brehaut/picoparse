@@ -50,7 +50,7 @@ quote = partial(one_of, "\"'")
 whitespace_char = partial(one_of, ' \t\n\r')
 whitespace = partial(many, whitespace_char)
 whitespace1 = partial(many1, whitespace_char)
-element_text = compose(build_string, partial(many1, partial(not_one_of, ' \t\r\n<>/=')))
+element_text = compose(build_string, partial(many1, partial(not_one_of, ' \t\r\n<>/=!')))
 decimal_digit = partial(one_of, '0123456789')
 hex_decimal_digit = partial(one_of, '0123456789AaBbCcDdEeFf')
 
@@ -105,6 +105,7 @@ def xml():
     prolog()
     whitespace()
     n = element()
+    whitespace()
     eof()
     return n
 
@@ -117,10 +118,10 @@ def prolog():
     [26]   	VersionNum	   ::=   	'1.' [0-9]+
     [27]   	Misc	   ::=   	 Comment | PI | S"""
     whitespace()
-    optional(partial(processing, xmldecl), None)
-    many(partial(choice, processing, comment, whitespace1))
-    optional(doctype, None)    
-    many(partial(choice, processing, comment, whitespace1))
+    print optional(tri(partial(processing, xmldecl)), None)
+    print many(partial(choice, processing, comment, whitespace1))
+    print optional(doctype, None)    
+    print many(partial(choice, processing, comment, whitespace1))
 
 # The xml declaration could be parsed with a specialised processing directive, or it can be
 # handled as a special case. We are going to handle it as a specialisation of the processing.
@@ -166,11 +167,11 @@ def standalone():
 def comment():
     string("<!--")
     commit()
-    result = many_until(any_token, tri(partial(string, "-->")))
-    return "COMMENT", result
+    result, _ = many_until(any_token, tri(partial(string, "-->")))
+    return "COMMENT", build_string(result)
 
-# Node is the general purpose node parser. it will consume any white space and then 
-# choose the first parser from the set provided that matches the input
+# Node is the general purpose node parser. it wil choose the first parser
+# from the set provided that matches the input
 def node():
     return choice(processing, element, text_node, comment)
 
@@ -232,7 +233,6 @@ parse_xml = partial(run_parser, xml)
 
 tokens, remaining = parse_xml("""
 <?xml version="1.0" ?>
-
 <!DOCTYPE MyDoctype>
 
 <!-- a comment -->
@@ -242,7 +242,9 @@ tokens, remaining = parse_xml("""
     <node foo="bar" baz="bo&amp;p">
         This is some node text &amp; it contains a named entity &#65;nd some &#x41; numeric
     </node>
-</root>""")
+<!-- ??? -->
+</root>
+""")
 
 # tokens, remaining = run_parser(xml, file('/Users/andrew/Music/iTunes/iTunes Music Library.xml').read())
 
