@@ -28,7 +28,7 @@ Comments throughout the file explain what is going on
 # POSSIBILITY OF SUCH DAMAGE.
 
 from picoparse import one_of, many, many1, not_one_of, run_parser, tri, commit, optional, fail
-from picoparse import choice, string, peek, cut, string, eof, many_until, any_token
+from picoparse import choice, string, peek, cut, string, eof, many_until, any_token, satisfies
 from functools import partial
 
 # some general functions to help build parsers; build string exists so we can compose it 
@@ -38,6 +38,13 @@ def compose(f, g):
 
 def build_string(iterable):
     return u''.join(iterable)
+    
+def caseless_string(s):
+    return partial(string, zip(s.lower(), s.upper()))
+
+def one_in_range(range):
+    low, high = range
+    return satisfies(lambda c: low <= c <= high)
 
 # We define common primative parsers by partial application. This is similar to the lexical 
 # analysis stage of a more traditional parser tool
@@ -53,6 +60,35 @@ whitespace1 = partial(many1, whitespace_char)
 element_text = compose(build_string, partial(many1, partial(not_one_of, ' \t\r\n<>/=!')))
 decimal_digit = partial(one_of, '0123456789')
 hex_decimal_digit = partial(one_of, '0123456789AaBbCcDdEeFf')
+
+"""
+[4]   	NameStartChar	   ::=   	":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | 
+[#xF8-#x2FF] | [#x370-#x37D] | 
+[#x37F-#x1FFF] | [#x200C-#x200D] | 
+[#x2070-#x218F] | [#x2C00-#x2FEF] | 
+[#x3001-#xD7FF] | [#xF900-#xFDCF] | 
+[#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
+[4a]   	NameChar	   ::=   	NameStartChar | "-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040]
+[5]   	Name	   ::=   	NameStartChar (NameChar)*
+[6]   	Names	   ::=   	Name (#x20 Name)*
+[7]   	Nmtoken	   ::=   	(NameChar)+
+[8]   	Nmtokens	   ::=   	Nmtoken (#x20 Nmtoken)*
+"""
+
+# hex_range creates a pair based on a string from the xml spec
+def hex_range(spec):
+    low, high = spec.split('-')
+    return int(low[2:], 16), int(high[2:], 16)
+
+name_start_char = partial(choice, partial(one_of, ':_'), 
+                          *[partial(one_in_range, *pair) for pair in [
+                                ('A','Z'), ('a','z'), 
+                                hex_range('#xC0-#xD6'), hex_range('#xD8-#xF6'),
+                                hex_range('#xF8-#x2FF'), hex_range('#x200C-#x200D'), 
+                                hex_range('#x2070-#x218F'), hex_range('#x2C00-#x2FEF'),
+                                hex_range('#x3001-#xD7FF'), hex_range('#xF900-#xFDCF'),
+                                hex_range('#xFDF0-#xFFFD'), hex_range('#x10000-#xEFFFF')]])
+
 
 # next we define the processing of an entity and then an xml_char, which are used later in node
 # definitions. A more sophisticated parser would let additional entities be regestered with 
@@ -134,7 +170,7 @@ def processing(parser = False):
     return result
 
 def xmldecl():
-    string('xml')
+    caseless_string('xml')
     whitespace()
     return ('xml', 
             optional(partial(xmldecl_attr, 'version', version_num), "1.0"), 

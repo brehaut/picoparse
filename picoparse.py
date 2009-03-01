@@ -164,7 +164,7 @@ def run_parser(parser, input):
     try:
       result = parser(), remaining()
     except NoMatch, e:
-      e.message = "picoparse.NoMatch\nRemaining:" + repr(remaining())
+      e.message = "%s.%s\nRemaining: %r" %  (e.__class__.__module__, e.__class__.name, remaining())
       raise
     finally:
       local_ps.value = old
@@ -201,6 +201,13 @@ def not_one_of(these):
             fail()
     next()
     return ch
+
+def satisfies(guard):
+    i = peek()
+    if not guard(i):
+        fail()
+    next()
+    return i
 
 def optional(parser, default):
     return choice(parser, lambda: default)
@@ -245,9 +252,10 @@ def n_of(parser, n):
     return [parser() for i in range(n)]
 
 def string(string):
+    found = []
     for c in string:
-        one_of(c)
-    return string
+        found.append(one_of(c))
+    return found
 
 def remaining():
     tokens = []
