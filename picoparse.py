@@ -164,7 +164,7 @@ def run_parser(parser, input):
     try:
       result = parser(), remaining()
     except NoMatch, e:
-      e.message = "%s.%s\nRemaining: %r" %  (e.__class__.__module__, e.__class__.name, remaining())
+      e.message = "%s.%s\nRemaining: %r" %  (e.__class__.__module__, e.__class__.__name__, remaining())
       raise
     finally:
       local_ps.value = old
