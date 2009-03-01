@@ -88,30 +88,29 @@ def char_spec_ascii_range():
 def char_spec_hex_range():
     string("[#x")
     commit()
-    low = int(build_string(many_until(hex_decimal_digit, one_of('-'))), 16)
-    string('-#x')
-    high = int(build_string(many_until(hex_decimal_digit, one_of(']'))), 16)
-    one_of("]")
+    low = int(build_string(many_until(hex_decimal_digit, partial(one_of, '-'))[0]), 16)
+    string('#x')
+    high = int(build_string(many_until(hex_decimal_digit, partial(one_of, ']'))[0]), 16)
     return (low, high)
 
 def char_spec_seperator():
     whitespace()
     one_of('|')
     whitespace()
-        
-xml_char_spec_parser = partial(sep1, partial(choice, char_spec_single_char,
-                                                    char_spec_ascii_range,
-                                                    char_spec_hex_range),
-                                    char_spec_seperator)
-                                    
-    
-    
+
+def xml_char_spec_parser():
+    v = sep1(partial(choice, char_spec_single_char,
+                             char_spec_ascii_range,
+                             char_spec_hex_range),
+             char_spec_seperator)
+    eof()
+    return v
+
 def xml_char_spec(spec):
     spec = run_parser(xml_char_spec_parser, spec)
     return spec
 
-print xml_char_spec('":" | [A-Z] | "_"')
-# print xml_char_spec('":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]')
+print xml_char_spec('":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]')
 
 # hex_range creates a pair based on a string from the xml spec
 def hex_range(spec):

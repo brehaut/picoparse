@@ -29,7 +29,7 @@ import threading
 
 class NoMatch(Exception):
     def __str__(self):
-        return "picoparse.NoMatch: " + getattr(self, 'remaining', '')
+        return getattr(self, 'message', '')
 
 class BufferWalker(object):
     """BufferWalker wraps up an iterable and provides an API for infinite lookahead
@@ -76,15 +76,6 @@ class BufferWalker(object):
         if self.depth == 0:
             cut()
         return t
-    
-    def prev(self):
-        """Returns the previous item, or None
-        """
-        self.index -= 1
-        if self.index < 0:
-            self.index = 0
-            return None
-        return self.peek()
     
     def peek(self):
         """Returns the current item or None"""
@@ -164,7 +155,7 @@ def run_parser(parser, input):
     try:
       result = parser(), remaining()
     except NoMatch, e:
-      e.message = "%s.%s\nRemaining: %r" %  (e.__class__.__module__, e.__class__.__name__, remaining())
+      e.message = "Remaining: %r" %  (remaining())
       raise
     finally:
       local_ps.value = old
@@ -215,13 +206,16 @@ def satisfies(guard):
 def optional(parser, default):
     return choice(parser, lambda: default)
 
-def notfollowedby(parser):
-    failed = object()
-    result = optional(tri(parser), failed)
-    if result != failed:
-        fail()
+def not_followed_by(parser):
+    @tri
+    def not_followed_by_block():
+        failed = object()
+        result = optional(tri(parser), failed)
+        if result != failed:
+            fail()
+    choice(not_followed_by_block)
 
-eof = partial(notfollowedby, any_token)
+eof = partial(not_followed_by, any_token)
 
 def many(parser):
     results = []
