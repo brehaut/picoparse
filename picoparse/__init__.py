@@ -133,13 +133,13 @@ local_ps = threading.local()
 ################################################################
 # Picoparse core API
 
-next =    lambda: local_ps.value.next()
-peek =    lambda: local_ps.value.peek()
-fail =    lambda: local_ps.value.fail()
-commit =  lambda: local_ps.value.commit()
-cut =     lambda: local_ps.value.cut()
-choice =  lambda *options: local_ps.value.choice(*options)
-is_eof =  lambda: bool(local_ps.value)
+next = lambda: local_ps.value.next()
+peek = lambda: local_ps.value.peek()
+fail = lambda: local_ps.value.fail()
+commit = lambda: local_ps.value.commit()
+cut = lambda: local_ps.value.cut()
+choice = lambda *options: local_ps.value.choice(*options)
+is_eof = lambda: bool(local_ps.value)
 
 def tri(parser):
     def tri_block(*args, **kwargs):
