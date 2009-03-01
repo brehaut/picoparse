@@ -1,6 +1,6 @@
 """picoparse -- a small lexer and parser library. Regular expression free.
 """
-# Copyright (c) 2008, Andrew Brehaut, Steven Ashley
+# Copyright (c) 2009, Andrew Brehaut, Steven Ashley
 # All rights reserved.
 # 
 # Redistribution and use in source and binary forms, with or without
@@ -242,6 +242,9 @@ def many_until(these, term):
         else:
             results.append(result)
 
+def many_until1(these, term):
+    return [these()] + many_until(these, term)
+
 def many1(parser):
     return [parser()] + many(parser)
 
@@ -252,7 +255,8 @@ def sep1(parser, seperator):
         return parser()
     return first + many(inner)
 
-sep = compose(lambda p: optional(p, []), partial(sep1))
+def sep(parser, seperator):
+    return optional(partial(sep1, parser, seperator), [])
 
 def n_of(parser, n):
     return [parser() for i in range(n)]
@@ -262,6 +266,10 @@ def string(string):
     for c in string:
         found.append(one_of(c))
     return found
+
+def cue(cue, parser):
+    cue()
+    return parser()
 
 def remaining():
     tokens = []

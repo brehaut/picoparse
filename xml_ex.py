@@ -3,7 +3,7 @@
 This example looks at XML as it is a textual stucture that the majority are familiar with. 
 Comments throughout the file explain what is going on
 """
-# Copyright (c) 2008, Andrew Brehaut, Steven Ashley
+# Copyright (c) 2009, Andrew Brehaut, Steven Ashley
 # All rights reserved.
 # 
 # Redistribution and use in source and binary forms, with or without
@@ -29,16 +29,13 @@ Comments throughout the file explain what is going on
 
 from picoparse import one_of, many, many1, not_one_of, run_parser, tri, commit, optional, fail
 from picoparse import choice, string, peek, cut, string, eof, many_until, any_token, satisfies
-from picoparse import sep, sep1, compose
+from picoparse import sep, sep1, compose, cue
+from picoparse.text import build_string, caseless_string, quoted, quote, whitespace, whitespace1
+from picoparse.text import lexeme
 from functools import partial
 
 # some general functions to help build parsers; build string exists so we can compose it 
 # with parser that return a series of characters or strings
-def build_string(iterable):
-    return u''.join(iterable)
-    
-def caseless_string(s):
-    return partial(string, zip(s.lower(), s.upper()))
 
 def one_in_range(range):
     low, high = range
@@ -51,19 +48,12 @@ close_angle = partial(one_of, '>')
 slash = partial(one_of, '/')
 question = partial(one_of, '?')
 equals = partial(one_of, '=')
-quote = partial(one_of, "\"'")
-whitespace_char = partial(one_of, ' \t\n\r')
-whitespace = partial(many, whitespace_char)
-whitespace1 = partial(many1, whitespace_char)
 element_text = compose(build_string, partial(many1, partial(not_one_of, ' \t\r\n<>/=!')))
 decimal_digit = partial(one_of, '0123456789')
 hex_decimal_digit = partial(one_of, '0123456789AaBbCcDdEeFf')
 
-# we want to be able to parse quoted strings, sometimes caring what the form of the content is
-def quoted_parser(parser):
-    quote_char = quote()
-    value, _ = many_until(any_token, partial(one_of, quote_char))
-    return build_string(value)
+def hex_value():
+    return int(build_string(many(hex_decimal_digit)), 16)
 
 # The XML spec defines a specific set of characters that are available for 'names'. Instead 
 # of manually encoding all of this we build a simple parser to parse the spec's grammer
@@ -75,46 +65,25 @@ def quoted_parser(parser):
 [7]   	Nmtoken	   ::=   	(NameChar)+
 [8]   	Nmtokens	   ::=   	Nmtoken (#x20 Nmtoken)*
 """
+char_spec_hex = partial(cue, partial(string, '#x'), hex_value)
 
-def char_spec_single_char():
-    one_of('"')
-    c = any_token()
-    one_of('"')
-    return partial(one_of, c)
-    
-def char_spec_single_hex_char():
-    string('#x')
-    return partial(one_of, chr(int(build_string(many(hex_decimal_digit)), 16)))
+char_spec_single_char = compose(partial(partial, one_of), quoted)
+char_spec_single_hex_char = compose(partial(partial, one_of), char_spec_hex)
 
-@tri
-def char_spec_ascii_range():
+char_spec_range_char= partial(choice, char_spec_hex, any_token)
+
+def char_spec_range():
     one_of("[")
-    low = any_token()
+    low = char_spec_range_char()
     one_of('-')
-    commit()
-    high = any_token()
+    high = char_spec_range_char()
     one_of("]")
     return partial(satisfies, lambda c: low <= c <= high)
 
-@tri
-def char_spec_hex_range():
-    string("[#x")
-    commit()
-    low = int(build_string(many_until(hex_decimal_digit, partial(one_of, '-'))[0]), 16)
-    string('#x')
-    high = int(build_string(many_until(hex_decimal_digit, partial(one_of, ']'))[0]), 16)
-    return partial(satisfies, lambda c: low <= c <= high)
-
-def char_spec_seperator():
-    whitespace()
-    one_of('|')
-    whitespace()
+char_spec_seperator = partial(lexeme, partial(one_of, '|'))
 
 def xml_char_spec_parser():
-    v = sep1(partial(choice, char_spec_single_char,
-                             char_spec_single_hex_char,
-                             char_spec_ascii_range,
-                             char_spec_hex_range),
+    v = sep1(partial(choice, char_spec_range, char_spec_single_char, char_spec_single_hex_char),
              char_spec_seperator)
     eof()
     return v
@@ -171,9 +140,7 @@ xml_char = partial(choice, partial(not_one_of, '<>&'), entity)
 # before the root element node, of which there may only be one
 def xml():
     prolog()
-    whitespace()
-    n = element()
-    whitespace()
+    n = lexeme(element)
     eof()
     return n
 
@@ -205,16 +172,15 @@ def processing(parser = False):
 def xmldecl():
     caseless_string('xml')
     whitespace()
-    return ('xml', 
-            optional(partial(xmldecl_attr, 'version', version_num), "1.0"), 
-            optional(partial(xmldecl_attr, 'standalone', standalone), "yes"))
+    return ('xml', optional(partial(xmldecl_attr, 'version', version_num), "1.0"), 
+                   optional(partial(xmldecl_attr, 'standalone', standalone), "yes"))
     
 def xmldecl_attr(name, parser):
     string(name)
     whitespace()
     equals()
     whitespace()
-    value = quoted_parser(version_num)
+    value = quoted(version_num)
     return value
 
 def version_num():
@@ -242,12 +208,9 @@ def text_node():
 
 @tri
 def doctype():
-    open_angle()
-    one_of('!')
+    string('<!DOCTYPE')
     commit()
-    string('DOCTYPE')
-    many(partial(not_one_of, '>'))
-    close_angle()
+    many_until(any_token, close_angle)
 
 @tri
 def element():
@@ -275,7 +238,7 @@ def end_element(name):
     open_angle()
     slash()
     commit()
-    if name != element_text():
+    if name != xml_name():
         fail()
     whitespace()
     close_angle()
@@ -285,10 +248,8 @@ def attribute():
     whitespace()
     name = xml_name()
     commit()
-    whitespace()
-    equals()
-    whitespace()
-    return "ATTR", name, quoted_parser(compose(build_string, partial(many, partial(choice, entity, partial(not_one_of, "\"'")))))
+    lexeme(equals)
+    return "ATTR", name, quoted()
 
 parse_xml = partial(run_parser, xml)
 
