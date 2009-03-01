@@ -59,6 +59,14 @@ element_text = compose(build_string, partial(many1, partial(not_one_of, ' \t\r\n
 decimal_digit = partial(one_of, '0123456789')
 hex_decimal_digit = partial(one_of, '0123456789AaBbCcDdEeFf')
 
+# we want to be able to parse quoted strings, sometimes caring what the form of the content is
+def quoted_parser(parser):
+    quote_char = quote()
+    value, _ = many_until(any_token, partial(one_of, quote_char))
+    return build_string(value)
+
+# The XML spec defines a specific set of characters that are available for 'names'. Instead 
+# of manually encoding all of this we build a simple parser to parse the spec's grammer
 """
 [4]   	NameStartChar	   ::=   	":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
 [4a]   	NameChar	   ::=   	NameStartChar | "-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040]
@@ -68,11 +76,11 @@ hex_decimal_digit = partial(one_of, '0123456789AaBbCcDdEeFf')
 [8]   	Nmtokens	   ::=   	Nmtoken (#x20 Nmtoken)*
 """
 
-def char_spec_single_char():
-    one_of('"')
-    c = any_token()
-    one_of('"')
-    return c
+char_spec_single_char = partial(quoted_parser, any_token)
+    
+def char_spec_single_hex_char():
+    string('#x')
+    return int(build_string(many(hex_decimal_digit)), 16)
 
 @tri
 def char_spec_ascii_range():
@@ -82,7 +90,7 @@ def char_spec_ascii_range():
     commit()
     high = any_token()
     one_of("]")
-    return (low, high)
+    return partial(satisfies, lambda c: low <= c <= high)
 
 @tri
 def char_spec_hex_range():
@@ -91,7 +99,7 @@ def char_spec_hex_range():
     low = int(build_string(many_until(hex_decimal_digit, partial(one_of, '-'))[0]), 16)
     string('#x')
     high = int(build_string(many_until(hex_decimal_digit, partial(one_of, ']'))[0]), 16)
-    return (low, high)
+    return partial(satisfies, lambda c: low <= c <= high)
 
 def char_spec_seperator():
     whitespace()
@@ -100,22 +108,19 @@ def char_spec_seperator():
 
 def xml_char_spec_parser():
     v = sep1(partial(choice, char_spec_single_char,
+                             char_spec_single_hex_char,
                              char_spec_ascii_range,
                              char_spec_hex_range),
              char_spec_seperator)
     eof()
     return v
 
-def xml_char_spec(spec):
-    spec = run_parser(xml_char_spec_parser, spec)
-    return spec
+def xml_char_spec(spec, extra_choices=[]):
+    parser, remainder = run_parser(xml_char_spec_parser, spec.strip())
+    return partial(choice, *(extra_choices + parser))
 
-print xml_char_spec('":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]')
-
-# hex_range creates a pair based on a string from the xml spec
-def hex_range(spec):
-    low, high = spec.split('-')
-    return int(low[2:], 16), int(high[2:], 16)
+name_start_char = xml_char_spec('":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]')
+name_char = xml_char_spec('"-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040]', [name_start_char])
 
 # next we define the processing of an entity and then an xml_char, which are used later in node
 # definitions. A more sophisticated parser would let additional entities be regestered with 
@@ -153,12 +158,6 @@ def numeric_entity():
 
 # finally, xml_char is created by partially apply choice to either, normal characters or entities
 xml_char = partial(choice, partial(not_one_of, '<>&'), entity)
-
-# we want to be able to parse quoted strings, sometimes caring what the form of the content is
-def quoted_parser(parser):
-    quote_char = quote()
-    value, _ = many_until(any_token, partial(one_of, quote_char))
-    return build_string(value)
     
 # now we are ready to start implementing the main document parsers.
 # xml is our entrypoint parser. The XML spec requires a specific (but optional) prolog
