@@ -29,13 +29,11 @@ Comments throughout the file explain what is going on
 
 from picoparse import one_of, many, many1, not_one_of, run_parser, tri, commit, optional, fail
 from picoparse import choice, string, peek, cut, string, eof, many_until, any_token, satisfies
+from picoparse import sep, compose
 from functools import partial
 
 # some general functions to help build parsers; build string exists so we can compose it 
 # with parser that return a series of characters or strings
-def compose(f, g):
-    return lambda *args, **kwargs: f(g(*args, **kwargs))
-
 def build_string(iterable):
     return u''.join(iterable)
     
@@ -75,20 +73,37 @@ hex_decimal_digit = partial(one_of, '0123456789AaBbCcDdEeFf')
 [8]   	Nmtokens	   ::=   	Nmtoken (#x20 Nmtoken)*
 """
 
+def char_spec_single_char():
+    one_of('"')
+    c = any_token()
+    one_of('"')
+
+def char_spec_ascii_range():
+    pass
+
+def char_spec_hex_range():
+    pass
+
+def char_spec_seperator():
+    whitespace()
+    one_of('|')
+    whitespace()
+        
+xml_char_spec_parser = partial(sep, partial(choice, char_spec_single_char,
+                                                    char_spec_ascii_range,
+                                                    char_spec_hex_range),
+                                    char_spec_seperator)
+                                    
+    
+    
+def xml_char_spec(spec):
+    spec = run_parser(xml_char_spec_parser, spec)
+    return spec
+
 # hex_range creates a pair based on a string from the xml spec
 def hex_range(spec):
     low, high = spec.split('-')
     return int(low[2:], 16), int(high[2:], 16)
-
-name_start_char = partial(choice, partial(one_of, ':_'), 
-                          *[partial(one_in_range, *pair) for pair in [
-                                ('A','Z'), ('a','z'), 
-                                hex_range('#xC0-#xD6'), hex_range('#xD8-#xF6'),
-                                hex_range('#xF8-#x2FF'), hex_range('#x200C-#x200D'), 
-                                hex_range('#x2070-#x218F'), hex_range('#x2C00-#x2FEF'),
-                                hex_range('#x3001-#xD7FF'), hex_range('#xF900-#xFDCF'),
-                                hex_range('#xFDF0-#xFFFD'), hex_range('#x10000-#xEFFFF')]])
-
 
 # next we define the processing of an entity and then an xml_char, which are used later in node
 # definitions. A more sophisticated parser would let additional entities be regestered with 

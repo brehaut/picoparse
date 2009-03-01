@@ -173,6 +173,9 @@ def run_parser(parser, input):
 ################################################################
 # Picoparse additional API
 
+def compose(f, g):
+    return lambda *args, **kwargs: f(g(*args, **kwargs))
+
 def any_token():
     ch = peek()
     if not ch:
@@ -247,6 +250,15 @@ def many_until(these, term):
 
 def many1(parser):
     return [parser()] + many(parser)
+
+def sep1(parser, seperator):
+    first = [parser()]
+    def inner():
+        seperator()
+        return parser()
+    return first + many(inner)
+
+sep = compose(lambda p: optional(p, []), partial(sep1))
 
 def n_of(parser, n):
     return [parser() for i in range(n)]
