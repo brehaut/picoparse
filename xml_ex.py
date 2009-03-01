@@ -76,11 +76,15 @@ def quoted_parser(parser):
 [8]   	Nmtokens	   ::=   	Nmtoken (#x20 Nmtoken)*
 """
 
-char_spec_single_char = partial(quoted_parser, any_token)
+def char_spec_single_char():
+    one_of('"')
+    c = any_token()
+    one_of('"')
+    return partial(one_of, c)
     
 def char_spec_single_hex_char():
     string('#x')
-    return int(build_string(many(hex_decimal_digit)), 16)
+    return partial(one_of, chr(int(build_string(many(hex_decimal_digit)), 16)))
 
 @tri
 def char_spec_ascii_range():
@@ -121,6 +125,9 @@ def xml_char_spec(spec, extra_choices=[]):
 
 name_start_char = xml_char_spec('":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]')
 name_char = xml_char_spec('"-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040]', [name_start_char])
+
+def xml_name():
+    return build_string([name_start_char()] + many(name_char))
 
 # next we define the processing of an entity and then an xml_char, which are used later in node
 # definitions. A more sophisticated parser would let additional entities be regestered with 
@@ -245,7 +252,7 @@ def doctype():
 @tri
 def element():
     open_angle()
-    name = element_text()
+    name = xml_name()
     commit()
     attributes = many(attribute)
     whitespace()
@@ -276,7 +283,7 @@ def end_element(name):
 @tri
 def attribute():
     whitespace()
-    name = element_text()
+    name = xml_name()
     commit()
     whitespace()
     equals()
