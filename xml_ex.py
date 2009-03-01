@@ -45,10 +45,7 @@ def one_in_range(range):
 # analysis stage of a more traditional parser tool
 open_angle = partial(one_of, '<')
 close_angle = partial(one_of, '>')
-slash = partial(one_of, '/')
-question = partial(one_of, '?')
 equals = partial(one_of, '=')
-element_text = compose(build_string, partial(many1, partial(not_one_of, ' \t\r\n<>/=!')))
 decimal_digit = partial(one_of, '0123456789')
 hex_decimal_digit = partial(one_of, '0123456789AaBbCcDdEeFf')
 
@@ -57,14 +54,7 @@ def hex_value():
 
 # The XML spec defines a specific set of characters that are available for 'names'. Instead 
 # of manually encoding all of this we build a simple parser to parse the spec's grammer
-"""
-[4]   	NameStartChar	   ::=   	":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
-[4a]   	NameChar	   ::=   	NameStartChar | "-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040]
-[5]   	Name	   ::=   	NameStartChar (NameChar)*
-[6]   	Names	   ::=   	Name (#x20 Name)*
-[7]   	Nmtoken	   ::=   	(NameChar)+
-[8]   	Nmtokens	   ::=   	Nmtoken (#x20 Nmtoken)*
-"""
+
 char_spec_hex = partial(cue, partial(string, '#x'), hex_value)
 
 char_spec_single_char = compose(partial(partial, one_of), quoted)
@@ -123,10 +113,10 @@ def named_entity():
 
 def hex_entity():
     one_of('x')
-    return chr(int(build_string(many1(hex_decimal_digit)), 16))
-    
+    return unichr(hex_value())
+
 def dec_entity():
-    return chr(int(build_string(many1(decimal_digit)), 10))
+    return unichr(int(build_string(many1(decimal_digit)), 10))
 
 def numeric_entity():
     one_of('#')
@@ -159,14 +149,12 @@ def prolog():
 def processing(parser = False):
     parser = parser if parser else compose(build_string, partial(many, partial(not_one_of, '?')))
 
-    open_angle()
-    one_of('?')
+    string('<?')
     commit()
     result = parser()
     whitespace()
     
-    one_of('?')
-    close_angle()
+    string('?>')
     return result
 
 def xmldecl():
@@ -177,9 +165,7 @@ def xmldecl():
     
 def xmldecl_attr(name, parser):
     string(name)
-    whitespace()
-    equals()
-    whitespace()
+    lexeme(equals)
     value = quoted(version_num)
     return value
 
@@ -203,8 +189,7 @@ def node():
     return choice(processing, element, text_node, comment)
 
 def text_node():
-    text = build_string(many1(xml_char))
-    return "TEXT", text
+    return "TEXT", build_string(many1(xml_char))
 
 @tri
 def doctype():
@@ -217,13 +202,11 @@ def element():
     open_angle()
     name = xml_name()
     commit()
-    attributes = many(attribute)
-    whitespace()
+    attributes = lexeme(partial(sep, attribute, whitespace1))
     return "NODE", name, attributes, choice(closed_element, partial(open_element, name))
 
 def closed_element():
-    slash()
-    close_angle()
+    string('/>')
     return []
 
 def open_element(name):
@@ -235,8 +218,7 @@ def open_element(name):
 @tri
 def end_element(name):
     whitespace()
-    open_angle()
-    slash()
+    string("</")
     commit()
     if name != xml_name():
         fail()
@@ -245,7 +227,6 @@ def end_element(name):
 
 @tri
 def attribute():
-    whitespace()
     name = xml_name()
     commit()
     lexeme(equals)
