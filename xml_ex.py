@@ -29,7 +29,7 @@ Comments throughout the file explain what is going on
 
 from picoparse import one_of, many, many1, not_one_of, run_parser, tri, commit, optional, fail
 from picoparse import choice, string, peek, cut, string, eof, many_until, any_token, satisfies
-from picoparse import sep, compose
+from picoparse import sep, sep1, compose
 from functools import partial
 
 # some general functions to help build parsers; build string exists so we can compose it 
@@ -60,12 +60,7 @@ decimal_digit = partial(one_of, '0123456789')
 hex_decimal_digit = partial(one_of, '0123456789AaBbCcDdEeFf')
 
 """
-[4]   	NameStartChar	   ::=   	":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | 
-[#xF8-#x2FF] | [#x370-#x37D] | 
-[#x37F-#x1FFF] | [#x200C-#x200D] | 
-[#x2070-#x218F] | [#x2C00-#x2FEF] | 
-[#x3001-#xD7FF] | [#xF900-#xFDCF] | 
-[#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
+[4]   	NameStartChar	   ::=   	":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
 [4a]   	NameChar	   ::=   	NameStartChar | "-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040]
 [5]   	Name	   ::=   	NameStartChar (NameChar)*
 [6]   	Names	   ::=   	Name (#x20 Name)*
@@ -77,19 +72,34 @@ def char_spec_single_char():
     one_of('"')
     c = any_token()
     one_of('"')
+    return c
 
+@tri
 def char_spec_ascii_range():
-    pass
+    one_of("[")
+    low = any_token()
+    one_of('-')
+    commit()
+    high = any_token()
+    one_of("]")
+    return (low, high)
 
+@tri
 def char_spec_hex_range():
-    pass
+    string("[#x")
+    commit()
+    low = int(build_string(many_until(hex_decimal_digit, one_of('-'))), 16)
+    string('-#x')
+    high = int(build_string(many_until(hex_decimal_digit, one_of(']'))), 16)
+    one_of("]")
+    return (low, high)
 
 def char_spec_seperator():
     whitespace()
     one_of('|')
     whitespace()
         
-xml_char_spec_parser = partial(sep, partial(choice, char_spec_single_char,
+xml_char_spec_parser = partial(sep1, partial(choice, char_spec_single_char,
                                                     char_spec_ascii_range,
                                                     char_spec_hex_range),
                                     char_spec_seperator)
@@ -99,6 +109,9 @@ xml_char_spec_parser = partial(sep, partial(choice, char_spec_single_char,
 def xml_char_spec(spec):
     spec = run_parser(xml_char_spec_parser, spec)
     return spec
+
+print xml_char_spec('":" | [A-Z] | "_"')
+# print xml_char_spec('":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]')
 
 # hex_range creates a pair based on a string from the xml spec
 def hex_range(spec):
