@@ -165,6 +165,11 @@ def run_parser(parser, input):
 # Picoparse additional API
 
 def compose(f, g):
+    """Compose returns a two functions composed as a new function.
+    
+    The first is called with the result of the second as its argument. Any arguments 
+    are passed to the second.
+    """
     return lambda *args, **kwargs: f(g(*args, **kwargs))
 
 def chain(*args):
@@ -179,6 +184,10 @@ def chain(*args):
     return chain_block
 
 def any_token():
+    """Will accept any token in the input stream and step forward.
+    
+    Fails if there is no more tokens
+    """
     ch = peek()
     if not ch:
         fail()
@@ -186,6 +195,10 @@ def any_token():
     return ch
 
 def one_of(these):
+    """Returns the current token if is found in the collection provided.
+    
+    Fails otherwise.
+    """
     ch = peek()
     try:
         if (ch is None) or (ch not in these):
@@ -197,6 +210,10 @@ def one_of(these):
     return ch
 
 def not_one_of(these):
+    """Returns the current token if it is not found in the collection provided.
+    
+    The negative of one_of. 
+    """
     ch = peek()
     try:
         if (ch is None) or (ch in these):
@@ -208,6 +225,11 @@ def not_one_of(these):
     return ch
 
 def satisfies(guard):
+    """Returns the current token if it satisfies the guard function provided.
+    
+    Fails otherwise.
+    This is the a generalisation of one_of.
+    """
     i = peek()
     if not guard(i):
         fail()
@@ -215,9 +237,12 @@ def satisfies(guard):
     return i
 
 def optional(parser, default):
+    """Tries to apply the provided parser, returning default if the parser fails.
+    """
     return choice(parser, lambda: default)
 
 def not_followed_by(parser):
+    """Succeeds if the given parser cannot consume input"""
     @tri
     def not_followed_by_block():
         failed = object()
@@ -229,6 +254,10 @@ def not_followed_by(parser):
 eof = partial(not_followed_by, any_token)
 
 def many(parser):
+    """Applies the parser to input zero or more times.
+    
+    Returns a list of parser results.
+    """
     results = []
     terminate = object()
     while local_ps.value:
@@ -238,28 +267,39 @@ def many(parser):
         results.append(result)
     return results
 
-def tag(t, parser):
+def many1(parser):
+    """Like many, but must consume at least one of parser"""
+    return [parser()] + many(parser)
+
+def _tag(t, parser):
     def tagged():
         return t, parser()
     return tagged
 
 def many_until(these, term):
+    """Consumes as many of these as it can until it term is encountered.
+    
+    Returns a tuple of the list of these results and the term result 
+    """
     results = []
     while True:
-        stop, result = choice(tag(True, term),
-                              tag(False, these))
+        stop, result = choice(_tag(True, term),
+                              _tag(False, these))
         if stop:
             return results, result
         else:
             results.append(result)
 
 def many_until1(these, term):
-    return [these()] + many_until(these, term)
-
-def many1(parser):
-    return [parser()] + many(parser)
+    """Like many_until but must consume at least one of these.
+    """
+    first = [these()]
+    these_results, term_result = many_until(these, term)
+    return (first + these_results, term_result)
 
 def sep1(parser, seperator):
+    """Like sep but must consume at least one of parser.
+    """
     first = [parser()]
     def inner():
         seperator()
@@ -267,18 +307,37 @@ def sep1(parser, seperator):
     return first + many(inner)
 
 def sep(parser, seperator):
+    """Consumes zero or more of parser, seperated by seperator.
+    
+    Returns a list of parser's results
+    """
     return optional(partial(sep1, parser, seperator), [])
 
 def n_of(parser, n):
+    """Consumes n of parser, returning a list of the results.
+    """
     return [parser() for i in range(n)]
 
 def string(string):
+    """Iterates over string, matching input to the items provided.
+    
+    The most obvious usage of this is to accept an entire string of characters,
+    However this is function is more general than that. It takes an iterable
+    and for each item, it tries one_of for that set. For example, 
+       string(['aA','bB','cC'])
+    will accept 'abc' in either case. 
+    
+    note, If you wish to match caseless strings as in the example, use 
+    picoparse.text.caseless_string.
+    """
     found = []
     for c in string:
         found.append(one_of(c))
     return found
 
 def cue(cue, parser):
+    """Returns the result of parser if it cue preceeds it.
+    """
     cue()
     return parser()
 
@@ -288,6 +347,8 @@ def follow(parser, following):
     return v
 
 def remaining():
+    """Returns the remaining input that has not been parsed.
+    """
     tokens = []
     while peek():
         tokens.append(peek())
