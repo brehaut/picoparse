@@ -1,0 +1,5 @@
+setup.py
+picoparse/__init__.py
+picoparse/text.py
+examples/xml.py
+README.markdown
