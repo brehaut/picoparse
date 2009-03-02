@@ -36,18 +36,29 @@ whitespace = partial(many, whitespace_char)
 whitespace1 = partial(many1, whitespace_char)
 
 def build_string(iterable):
+    """A utility function to wrap up the converting a list of characters back into a string.
+    """
     return u''.join(iterable)
     
 def caseless_string(s):
-    return partial(string, zip(s.lower(), s.upper()))
+    """Attempts to match input to the letters in the string, without regard for case.
+    """
+    return string(zip(s.lower(), s.upper()))
 
 def lexeme(parser):
+    """Ignores any whitespace surrounding parser.
+    """
     whitespace()
     v = parser()
     whitespace()
     return v
     
 def quoted(parser=any_token):
+    """Parses as much as possible until it encounters a matching closing quote.
+    
+    By default matches any_token, but can be provided with a more specific parser if required.
+    Returns a string
+    """
     quote_char = quote()
     value, _ = many_until(any_token, partial(one_of, quote_char))
     return build_string(value)
