@@ -3,14 +3,9 @@ import unittest
 from functools import partial as p
 from picoparse import run_parser, NoMatch
 from picoparse import any_token, one_of, not_one_of, satisfies
+from picoparse import many, many1, many_until
 
-def run(parser, input):
-    tokens, remaining = run_parser(parser, input)
-    return tokens
-
-def runp(parser, input):
-    """returns a callable to run the parser with the input provided"""
-    return p(run, parser, input)
+from utils import run, runp
 
 # some simple parsers
 nothing = p(one_of, '')
@@ -81,8 +76,36 @@ class TestTokenConsumers(unittest.TestCase):
         self.assertRaises(NoMatch, runp(one_b_to_d, 'e'))
 
 
+many_as = p(many, one_a)
+at_least_one_a = p(many1, one_a)
+
+class TestManyCombinators(unittest.TestCase):
+    """Tests the simple many* parser combinators.
+    """
+    
+    def testmany(self):
+        self.assertEquals(run(many_as, ''), [])
+        self.assertEquals(run(many_as, 'a'), ['a'])
+        self.assertEquals(run(many_as, 'aa'), ['a','a'])
+        self.assertEquals(run(many_as, 'aaa'), ['a','a', 'a'])
+    
+        self.assertEquals(run(many_as, 'b'), [])
+        self.assertEquals(run(many_as, 'ab'), ['a'])
+        self.assertEquals(run(many_as, 'aab'), ['a','a'])
+        self.assertEquals(run(many_as, 'aaab'), ['a','a', 'a'])
+
+    def testmany1(self):
+        self.assertRaises(NoMatch, runp(at_least_one_a, ''))
+        self.assertEquals(run(at_least_one_a, 'a'), ['a'])
+        self.assertEquals(run(at_least_one_a, 'aa'), ['a','a'])
+        self.assertEquals(run(at_least_one_a, 'aaa'), ['a','a', 'a'])
+
+        self.assertRaises(NoMatch, runp(at_least_one_a, 'b'))
+        self.assertEquals(run(at_least_one_a, 'ab'), ['a'])
+        self.assertEquals(run(at_least_one_a, 'aab'), ['a','a'])
+        self.assertEquals(run(at_least_one_a, 'aaab'), ['a','a', 'a'])
 
 if __name__ == '__main__':
     unittest.main()
 
-__all__ = ['TestTokenConsumers', ]
+__all__ = ['TestTokenConsumers', 'TestManyCombinators', ]
