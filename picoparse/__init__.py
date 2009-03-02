@@ -271,6 +271,25 @@ def cue(cue, parser):
     cue()
     return parser()
 
+def follow(parser, following):
+    v = parser()
+    following()
+    return v
+
+def seq(*args):
+    results = {}
+    for p in args:
+        k = None
+        v = p
+        try:
+            k,v = p
+        except TypeError:
+            pass
+        r = v()
+        if k:
+            results[k] = r
+    return results
+
 def remaining():
     tokens = []
     while peek():
