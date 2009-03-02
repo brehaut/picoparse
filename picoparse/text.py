@@ -49,5 +49,6 @@ def lexeme(parser):
     
 def quoted(parser=any_token):
     quote_char = quote()
-    value, _ = many_until(any_token, partial(one_of, quote_char))
+    value, _ = many_until(parser, partial(one_of, quote_char))
     return build_string(value)
+

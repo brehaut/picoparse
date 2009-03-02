@@ -167,6 +167,17 @@ def run_parser(parser, input):
 def compose(f, g):
     return lambda *args, **kwargs: f(g(*args, **kwargs))
 
+def chain(*args):
+    """Runs a series of parsers in sequence passing the result of each parser to the next.
+    The result of the last parser is returned.
+    """
+    def chain_block(*args, **kwargs):
+        v = args[0](*args, **kwargs)
+        for p in args[1:]:
+            v = p(v)
+        return v
+    return chain_block
+
 def any_token():
     ch = peek()
     if not ch:
@@ -275,20 +286,6 @@ def follow(parser, following):
     v = parser()
     following()
     return v
-
-def seq(*args):
-    results = {}
-    for p in args:
-        k = None
-        v = p
-        try:
-            k,v = p
-        except TypeError:
-            pass
-        r = v()
-        if k:
-            results[k] = r
-    return results
 
 def remaining():
     tokens = []

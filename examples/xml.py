@@ -66,10 +66,10 @@ def hex_value():
 # First we are going to create parsers for the individual characters that may appear in the spec,
 # then we are going to define parsers for a character range.
 
-# in the XML character spec, a hexdecimal digit begins with '#x'; cue is a parser combinator.
+# In the XML character spec, a hexdecimal digit begins with '#x'; cue is a parser combinator.
 # it takes two parsers, runs the first, and then if that accepts, it runs the second and returns 
 # the result. You can see that we are defining a specialisation of cue with a specialisation of 
-# string (which only accepts the input matches the iterable it is given), and hex_value above.
+# string (which only accepts if the input matches the iterable it is given), and hex_value above.
 char_spec_hex = partial(cue, partial(string, '#x'), hex_value)
 
 # The next two parsers use a function 'compose' as well as nested partials. This is creating
