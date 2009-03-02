@@ -8,5 +8,12 @@ setup(name='picoparse',
       author='Andrew Brehaut, Steven Ashley',
       author_email='andrew@brehaut.net',
       url='http://github.com/brehaut/picoparse/',
-      packages={'picoparse':'lib'}
+      packages={'picoparse':'lib'},
+      classifiers=[
+        'Development Status :: 4 - Beta',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: MIT License',
+        'Topic :: Software Development :: Libraries :: Python Modules',
+        'Topic :: Text Processing',
+      ],
      )
