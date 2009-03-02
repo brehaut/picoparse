@@ -297,3 +297,16 @@ def remaining():
         next()
     return tokens
 
+def seq(*sequence):
+    results = {}
+    for p in sequence:
+        if callable(p): 
+            p()
+            continue
+        k, v = p
+        results[k] = v()
+    return results
+    
+    
+    
+    

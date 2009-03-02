@@ -27,6 +27,9 @@ Comments throughout the file explain what is going on
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 # POSSIBILITY OF SUCH DAMAGE.
 
+# We are going to import a lot of parsers and parser combinators from picoparse.
+# You dont need to understand them all right away. This style of parser library lends itself 
+# to learning and groking small pieces at a time
 from picoparse import one_of, many, many1, not_one_of, run_parser, tri, commit, optional, fail
 from picoparse import choice, string, peek, cut, string, eof, many_until, any_token, satisfies
 from picoparse import sep, sep1, compose, cue
@@ -34,34 +37,58 @@ from picoparse.text import build_string, caseless_string, quoted, quote, whitesp
 from picoparse.text import lexeme
 from functools import partial
 
-# some general functions to help build parsers; build string exists so we can compose it 
-# with parser that return a series of characters or strings
-
-def one_in_range(range):
-    low, high = range
-    return satisfies(lambda c: low <= c <= high)
-
 # We define common primative parsers by partial application. This is similar to the lexical 
-# analysis stage of a more traditional parser tool
+# analysis stage of a more traditional parser tool.
+#
+# Note here is that these simple parsers are just specialisations of the general purpose
+# 'one_of' parser that will accept any item that is the provided iterable.
+#   partial(one_of, '<') is equivalent to lambda: one_of('<')
+# This is an important idea with picoparse, as it lets you express the specialisation more
+# succinctly and more precisely than defing a whole new function 
 open_angle = partial(one_of, '<')
 close_angle = partial(one_of, '>')
 equals = partial(one_of, '=')
 decimal_digit = partial(one_of, '0123456789')
 hex_decimal_digit = partial(one_of, '0123456789AaBbCcDdEeFf')
 
+# hex_value is a simple parser that knows how to parse out a set of hex digits and return them
+# as an integer. build_string wraps up u''.join(iterable) for us. 
 def hex_value():
     return int(build_string(many(hex_decimal_digit)), 16)
 
-# The XML spec defines a specific set of characters that are available for 'names'. Instead 
-# of manually encoding all of this we build a simple parser to parse the spec's grammer
+# The next primatives we need are for the XML name type. The specification for this is reasonably 
+# involved; instead of manually implementing it, we are going to create a new parser for the
+# grammer that the spec ifself uses. This parser will generate a new parser for us.
+#
+# To be clear, this piece of code creates a parser that runs when the module is loaded, not when
+# parsing the XML itself.
+#
+# First we are going to create parsers for the individual characters that may appear in the spec,
+# then we are going to define parsers for a character range.
 
+# in the XML character spec, a hexdecimal digit begins with '#x'; cue is a parser combinator.
+# it takes two parsers, runs the first, and then if that accepts, it runs the second and returns 
+# the result. You can see that we are defining a specialisation of cue with a specialisation of 
+# string (which only accepts the input matches the iterable it is given), and hex_value above.
 char_spec_hex = partial(cue, partial(string, '#x'), hex_value)
 
+# The next two parsers use a function 'compose' as well as nested partials. This is creating
+# a parser that returns a parser. compose(f, g) is equivalent to f(g()). 
 char_spec_single_char = compose(partial(partial, one_of), quoted)
 char_spec_single_hex_char = compose(partial(partial, one_of), char_spec_hex)
 
-char_spec_range_char= partial(choice, char_spec_hex, any_token)
+# Now that we have parsers for the different notations for characters, we need to create a parser
+# that can choose the correct parser to use. For this we are going to specialise 'choice', This 
+# combinator is given a set of parsers to try in order; If a parser fails, it backtracks and tries
+# the next, until one succeeds. If none succeed, then the choice fails. 
+char_spec_range_char = partial(choice, char_spec_hex, any_token)
 
+# The second part of the character spec is a range. This is more complex that previous parsers
+# and we are using a def for it. This parser takes advantage of the previous definition of 
+# the char_spec_range_char to find either literal characters or hexdecimal codepoints.
+# It returns a new parser specialising 'satisfies'. satisfies takes a function that is called 
+# against the input. In this case we are creating a parser that checks that a character is within
+# the given range
 def char_spec_range():
     one_of("[")
     low = char_spec_range_char()
@@ -72,23 +99,40 @@ def char_spec_range():
 
 char_spec_seperator = partial(lexeme, partial(one_of, '|'))
 
+# This is the top level parser for the chararacter spec. sep1 is a combinator that finds something
+# seperated by something else. In this case it finds one of a range, a single character or a hex 
+# character, and the seperator is a '|'. sep and sep1 return a list.
+#
+# Secondly, note the 'eof()' here. This parser is checking that we have reached the end of the input
+#
+# The last thing to be aware of is that each of the choices _returns a list of parsers_
 def xml_char_spec_parser():
     v = sep1(partial(choice, char_spec_range, char_spec_single_char, char_spec_single_hex_char),
              char_spec_seperator)
     eof()
     return v
 
+# We cant call parsers from outside of a 'run_parser' call. run_parser evaluates the parser function
+# you provide over the input you provide, returning the result, and the remainder. Remember that 
+# xml_char_spec_parser returns a list of parsers. This function wraps those parses up in a choice.
+# This choice parser will accept a single character if it falls within the spec. 
 def xml_char_spec(spec, extra_choices=[]):
-    parser, remainder = run_parser(xml_char_spec_parser, spec.strip())
+    parsers, remainder = run_parser(xml_char_spec_parser, spec.strip())
     return partial(choice, *(extra_choices + parser))
 
+# Finally, we run the xml_char_spec function over the character sets to get two new parsers
+# to accept the valid characters for names of elements and attributes. 
 name_start_char = xml_char_spec('":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6] | [#xD8-#xF6] | [#xF8-#x2FF] | [#x370-#x37D] | [#x37F-#x1FFF] | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]')
 name_char = xml_char_spec('"-" | "." | [0-9] | #xB7 | [#x0300-#x036F] | [#x203F-#x2040]', [name_start_char])
 
+# We return to the parser for XML now, rather than the grammer for xml characers.
+
+# Now that we have those two primatives, we can build a parser that accepts an xml name.
+# You can see that a name has one name_start_char, followed by zero or more name_chars
 def xml_name():
     return build_string([name_start_char()] + many(name_char))
 
-# next we define the processing of an entity and then an xml_char, which are used later in node
+# Next we define the processing of an entity and then an xml_char, which are used later in node
 # definitions. A more sophisticated parser would let additional entities be regestered with 
 # directives
 named_entities = {
@@ -127,7 +171,8 @@ xml_char = partial(choice, partial(not_one_of, '<>&'), entity)
     
 # now we are ready to start implementing the main document parsers.
 # xml is our entrypoint parser. The XML spec requires a specific (but optional) prolog
-# before the root element node, of which there may only be one
+# before the root element node, of which there may only be one. Note that once again
+# we are checking reach the end of input.
 def xml():
     prolog()
     n = lexeme(element)
@@ -248,8 +293,6 @@ tokens, remaining = parse_xml("""
     </node>
 </root>
 """)
-
-# tokens, remaining = run_parser(xml, file('/Users/andrew/Music/iTunes/iTunes Music Library.xml').read())
 
 print "nodes:", tokens
 print
