@@ -234,7 +234,7 @@ def satisfies(guard):
     This is the a generalisation of one_of.
     """
     i = peek()
-    if not guard(i):
+    if (i is None) or (not guard(i)):
         fail()
     next()
     return i
