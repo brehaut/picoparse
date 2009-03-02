@@ -118,7 +118,7 @@ def xml_char_spec_parser():
 # This choice parser will accept a single character if it falls within the spec. 
 def xml_char_spec(spec, extra_choices=[]):
     parsers, remainder = run_parser(xml_char_spec_parser, spec.strip())
-    return partial(choice, *(extra_choices + parser))
+    return partial(choice, *(extra_choices + parsers))
 
 # Finally, we run the xml_char_spec function over the character sets to get two new parsers
 # to accept the valid characters for names of elements and attributes. 
