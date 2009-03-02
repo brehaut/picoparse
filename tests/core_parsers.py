@@ -22,7 +22,8 @@ not_a_or_b = p(not_one_of, 'ab')
 
 always_satisfies = p(satisfies, lambda i: True)
 never_satisfies = p(satisfies, lambda i: False)
-    
+one_b_to_d = p(satisfies, lambda i: 'b' <= i <= 'd')
+
 class TestTokenConsumers(unittest.TestCase):
     """This TestCase checks that all the primative token consumers work as expected.
     """
@@ -70,9 +71,18 @@ class TestTokenConsumers(unittest.TestCase):
         self.assertRaises(NoMatch, runp(never_satisfies, 'a'))
         self.assertRaises(NoMatch, runp(never_satisfies, 'b'))
         self.assertRaises(NoMatch, runp(never_satisfies, ''))
-        
-        
+
+        self.assertEquals(run(one_b_to_d, 'b'), 'b')
+        self.assertEquals(run(one_b_to_d, 'c'), 'c')
+        self.assertEquals(run(one_b_to_d, 'd'), 'd')
+        self.assertEquals(run(one_b_to_d, 'bc'), 'b')
+        self.assertRaises(NoMatch, runp(one_b_to_d, ''))
+        self.assertRaises(NoMatch, runp(one_b_to_d, 'a'))
+        self.assertRaises(NoMatch, runp(one_b_to_d, 'e'))
+
+
 
 if __name__ == '__main__':
     unittest.main()
-    
+
+__all__ = ['TestTokenConsumers', ]
