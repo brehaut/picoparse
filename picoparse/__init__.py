@@ -74,7 +74,7 @@ class BufferWalker(object):
         self.index += 1
         t = self.peek()
         if self.depth == 0:
-            cut()
+            self.cut()
         return t
     
     def peek(self):
