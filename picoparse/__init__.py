@@ -51,7 +51,10 @@ class BufferWalker(object):
     """
     def __init__(self, source):
         self.source = iter(source)
-        self.buffer = [self.source.next()]
+        try:
+            self.buffer = [self.source.next()]
+        except StopIteration:
+            self.buffer = []
         self.index = 0
         self.len = len(self.buffer)
         self.depth = 0
