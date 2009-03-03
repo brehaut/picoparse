@@ -50,8 +50,10 @@ class BufferWalker(object):
     You can test the BufferWalker for Truthiness; if there is still parsable input then 
     it will be truthy, if not, falsy.
     """
-    def __init__(self, source, wrap=lambda x: izip(x, count(1))):
-        self.source = iter(wrap(source))
+    def __init__(self, source, wrapper):
+        if wrapper is None:
+            wrapper = lambda x: izip(x, count(1))
+        self.source = wrapper(iter(source))
         try:
             self.buffer = [self.source.next()]
         except StopIteration:
@@ -158,9 +160,9 @@ def tri(parser):
         return local_ps.value.tri(parser, *args, **kwargs)
     return tri_block
 
-def run_parser(parser, input):
+def run_parser(parser, input, wrapper=None):
     old = getattr(local_ps, 'value', None)
-    local_ps.value = BufferWalker(input)
+    local_ps.value = BufferWalker(input, wrapper)
     try:
       result = parser(), remaining()
     except NoMatch, e:

@@ -27,13 +27,14 @@ for instance the quote and quoted parsers assume quotes can be ' or "
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 # POSSIBILITY OF SUCH DAMAGE.
 
-from picoparse import string, one_of, many, many1, many_until, any_token
+from picoparse import string, one_of, many, many1, many_until, any_token, run_parser
 from functools import partial
 
 quote = partial(one_of, "\"'")
 whitespace_char = partial(one_of, ' \t\n\r')
 whitespace = partial(many, whitespace_char)
 whitespace1 = partial(many1, whitespace_char)
+newline = partial(one_of, '\n')
 
 def build_string(iterable):
     """A utility function to wrap up the converting a list of characters back into a string.
@@ -63,3 +64,40 @@ def quoted(parser=any_token):
     value, _ = many_until(parser, partial(one_of, quote_char))
     return build_string(value)
 
+class TextStreamWrapper(object):
+    def __init__(self):
+        self.lines = []
+        self.row = 1
+        self.col = 1
+        self._line = []
+    
+    def wrap(self, stream):
+        try:
+            while True:
+                t = stream.next()
+                if t == '\r' or t == '\n':
+                    for r in self._emit_line():
+                        yield r
+                    if t == '\r':
+                        t2 = stream.next()
+                        if t2 != '\n':
+                            self._line.append(t2)
+                else:
+                    self._line.append(t)
+        except StopIteration:
+            for r in self._emit_line():
+                yield r
+    
+    def _emit_line(self):
+        line_str = u''.join(self._line)
+        self.lines.append(line_str)
+        for token in self._line:
+            yield (token, (self.row, self.col, line_str))
+            self.col += 1
+        yield ('\n', (self.row, self.col, line_str))
+        self.col = 1
+        self.row += 1
+        self._line = []
+
+def run_text_parser(parser, input):
+    return run_parser(parser, input, TextStreamWrapper().wrap)
