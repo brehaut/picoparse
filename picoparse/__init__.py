@@ -52,6 +52,15 @@ class DefaultDiagnostics(object):
             self.tokens.append(r)
             yield r
 
+
+class EOF(object):
+    def __str__(self): return "EOF"
+    def __repr__(self): return "EOF"
+
+
+EndOfFile = EOF()
+
+
 class BufferWalker(object):
     """BufferWalker wraps up an iterable and provides an API for infinite lookahead
     but retains laziness. 
@@ -86,7 +95,7 @@ class BufferWalker(object):
         self.diag = diag
     
     def __nonzero__(self):
-        return self.peek() is not None
+        return self.peek() is not EndOfFile
     
     def _fill(self, size):
         """fills the internal buffer from the source iterator"""
@@ -94,7 +103,7 @@ class BufferWalker(object):
             for i in range(size):
                 self.buffer.append(self.source.next())
         except StopIteration:
-            self.buffer.append((None, None))
+            self.buffer.append((EndOfFile, None))
         self.len = len(self.buffer)
     
     def next(self):
@@ -109,7 +118,7 @@ class BufferWalker(object):
         """Returns the current (token, position) or (None,None)"""
         if self.index >= self.len:
             self._fill((self.index - self.len) + 1)
-        return self.buffer[self.index] if self.index < self.len else (None, None)
+        return self.buffer[self.index] if self.index < self.len else (EndOfFile, None)
     
     def peek(self):
         """Returns the current token or None"""
