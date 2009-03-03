@@ -55,7 +55,7 @@ class DefaultDiagnostics(object):
 
 class EOF(object):
     def __str__(self): return "EOF"
-    def __repr__(self): return "EOF"
+    def __repr__(self): return "EOF()"
     def __nonzero__(self): return False
 
 

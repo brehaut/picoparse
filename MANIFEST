@@ -2,8 +2,10 @@ setup.py
 picoparse/__init__.py
 picoparse/text.py
 examples/xml.py
+examples/calculator.py
 test.py
-tests/__init__.py
 tests/utils.py
+tests/backend.py
 tests/core_parsers.py
 README.markdown
+MANIFEST
