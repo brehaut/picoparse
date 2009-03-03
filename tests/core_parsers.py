@@ -2,8 +2,9 @@ import unittest
 
 from functools import partial as p
 from picoparse import run_parser, NoMatch
-from picoparse import any_token, one_of, not_one_of, satisfies
-from picoparse import many, many1, many_until, many_until1, n_of
+from picoparse import any_token, one_of, not_one_of, satisfies, eof
+from picoparse import many, many1, many_until, many_until1, n_of, optional
+from picoparse import sep, sep1
 
 from utils import run, runp, ParserTestCase
 
@@ -75,6 +76,10 @@ class TestTokenConsumers(ParserTestCase):
         self.assertNoMatch(one_b_to_d, 'a')
         self.assertNoMatch(one_b_to_d, 'e')
 
+    def testeof(self):
+        self.assertEquals(run(eof, ''), None)
+        self.assertNoMatch(eof, 'a')
+        
 
 many_as = p(many, one_a)
 at_least_one_a = p(many1, one_a)
@@ -82,6 +87,8 @@ one_b = p(one_of, 'b')
 some_as_then_b = p(many_until, one_a, one_b)
 at_least_one_a_then_b = p(many_until1, one_a, one_b)
 three_as = p(n_of, one_a, 3)
+zero_or_one_a = p(optional, one_a, None)
+
 
 class TestManyCombinators(ParserTestCase):
     """Tests the simple many* parser combinators.
@@ -139,8 +146,44 @@ class TestManyCombinators(ParserTestCase):
         self.assertNoMatch(three_as, 'b')        
         self.assertNoMatch(three_as, 'ab')
         self.assertNoMatch(three_as, 'aab')
+    
+    def testoptional(self):
+        self.assertEquals(run(zero_or_one_a, ''), None)
+        self.assertEquals(run(zero_or_one_a, 'a'), 'a')
+        self.assertEquals(run(zero_or_one_a, 'aa'), 'a')
+        self.assertEquals(run(zero_or_one_a, 'b'), None)
 
+
+as_sep_by_b = p(sep, one_a, one_b)
+one_or_more_as_sep_by_b = p(sep1, one_a, one_b)
+
+
+class TestSeperatorCombinators(ParserTestCase):
+    def testsep(self):
+        self.assertEquals(run(as_sep_by_b, ''), [])
+        self.assertEquals(run(as_sep_by_b, 'a'), ['a'])        
+        self.assertNoMatch(as_sep_by_b, 'ab')
+        self.assertEquals(run(as_sep_by_b, 'aba'), ['a','a'])      
+        self.assertNoMatch(as_sep_by_b, 'abab')
+        self.assertEquals(run(as_sep_by_b, 'ababa'), ['a','a','a'])      
+        self.assertEquals(run(as_sep_by_b, 'b'), [])
+        self.assertEquals(run(as_sep_by_b, 'ba'), [])
+        self.assertEquals(run(as_sep_by_b, 'bab'), [])
+        
+    def testsep1(self):
+        self.assertNoMatch(one_or_more_as_sep_by_b, '')
+        self.assertEquals(run(one_or_more_as_sep_by_b, 'a'), ['a'])        
+        self.assertNoMatch(one_or_more_as_sep_by_b, 'ab')
+        self.assertEquals(run(one_or_more_as_sep_by_b, 'aba'), ['a','a'])      
+        self.assertNoMatch(one_or_more_as_sep_by_b, 'abab')
+        self.assertEquals(run(one_or_more_as_sep_by_b, 'ababa'), ['a','a','a'])      
+        self.assertNoMatch(one_or_more_as_sep_by_b, 'b')
+        self.assertNoMatch(one_or_more_as_sep_by_b, 'ba')
+        self.assertNoMatch(one_or_more_as_sep_by_b, 'bab')
+        
+        
 if __name__ == '__main__':
     unittest.main()
 
-__all__ = ['TestTokenConsumers', 'TestManyCombinators', ]
+__all__ = ['TestTokenConsumers', 'TestManyCombinators', 'TestSeperatorCombinators']
+
