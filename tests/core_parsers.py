@@ -5,7 +5,7 @@ from picoparse import run_parser, NoMatch
 from picoparse import any_token, one_of, not_one_of, satisfies, eof
 from picoparse import many, many1, many_until, many_until1, n_of, optional
 from picoparse import sep, sep1
-from picoparse import cue, follow, seq
+from picoparse import cue, follow, seq, string
 
 from utils import run, runp, ParserTestCase
 
@@ -186,23 +186,26 @@ class TestSeperatorCombinators(ParserTestCase):
 a_then_ret_b = p(cue, one_a, one_b)
 ret_a_then_b = p(follow, one_a, one_b)
 a_then_ab_then_b = p(seq, ('A', one_a), one_a, one_b, ('B', one_b))
+abc = p(string, 'abc')
+abc_caseless = p(string, ['aA','bB', 'cC'])
+
 
 class TestSequencingCombinators(ParserTestCase):
-    def testcue():
+    def testcue(self):
         self.assertEquals(run(a_then_ret_b, 'ab'), 'b')
-        self.NoMatch(a_then_ret_b, '')
-        self.NoMatch(a_then_ret_b, 'a')
-        self.NoMatch(a_then_ret_b, 'b')
+        self.assertNoMatch(a_then_ret_b, '')
+        self.assertNoMatch(a_then_ret_b, 'a')
+        self.assertNoMatch(a_then_ret_b, 'b')
         self.assertEquals(run(a_then_ret_b, 'aba'), 'b')
 
-    def testfollow():
+    def testfollow(self):
         self.assertEquals(run(ret_a_then_b, 'ab'), 'a')
-        self.NoMatch(ret_a_then_b, '')
-        self.NoMatch(ret_a_then_b, 'a')
-        self.NoMatch(ret_a_then_b, 'b')
+        self.assertNoMatch(ret_a_then_b, '')
+        self.assertNoMatch(ret_a_then_b, 'a')
+        self.assertNoMatch(ret_a_then_b, 'b')
         self.assertEquals(run(ret_a_then_b, 'aba'), 'a')
 
-    def testseq():
+    def testseq(self):
         self.assertNoMatch(a_then_ab_then_b, '')
         self.assertNoMatch(a_then_ab_then_b, 'a')
         self.assertNoMatch(a_then_ab_then_b, 'ab')
@@ -212,10 +215,32 @@ class TestSequencingCombinators(ParserTestCase):
         self.assertNoMatch(a_then_ab_then_b, 'aaba')       
         self.assertEquals(run(a_then_ab_then_b, 'aabb'),{'A':'a', 'B':'b'}) 
         self.assertEquals(run(a_then_ab_then_b, 'aabba'),{'A':'a', 'B':'b'})
+    
+    def teststring(self):
+        self.assertEquals(run(abc, 'abc'), ['a','b','c'])
+        self.assertEquals(run(abc, 'abca'), ['a','b','c'])
+        self.assertNoMatch(abc, '')
+        self.assertNoMatch(abc, 'a')
+        self.assertNoMatch(abc, 'ab')        
+        self.assertNoMatch(abc, 'aa')
+        self.assertNoMatch(abc, 'aba')
+        self.assertNoMatch(abc, 'abb')
+    
+        for triple in [(a, b, c) for a in 'aA' for b in 'bB' for c in 'cC']:
+            s = u''.join(triple)
+            l = list(triple)
+            self.assertEquals(run(abc_caseless, s), l)
+            s += 'a'
+            self.assertEquals(run(abc_caseless, s), l)
+        self.assertNoMatch(abc_caseless, '')
         
         
+                
 if __name__ == '__main__':
     unittest.main()
 
-__all__ = ['TestTokenConsumers', 'TestManyCombinators', 'TestSeperatorCombinators']
+__all__ = ['TestTokenConsumers', 'TestManyCombinators', 
+           'TestSeperatorCombinators', 'TestSequencingCombinators',
+           ]
+
 
