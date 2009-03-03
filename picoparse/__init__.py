@@ -331,21 +331,21 @@ def many_until1(these, term):
     these_results, term_result = many_until(these, term)
     return (first + these_results, term_result)
 
-def sep1(parser, seperator):
+def sep1(parser, separator):
     """Like sep but must consume at least one of parser.
     """
     first = [parser()]
     def inner():
-        seperator()
+        separator()
         return parser()
     return first + many(inner)
 
-def sep(parser, seperator):
-    """Consumes zero or more of parser, seperated by seperator.
+def sep(parser, separator):
+    """Consumes zero or more of parser, separated by separator.
     
     Returns a list of parser's results
     """
-    return optional(partial(sep1, parser, seperator), [])
+    return optional(partial(sep1, parser, separator), [])
 
 def n_of(parser, n):
     """Consumes n of parser, returning a list of the results.
