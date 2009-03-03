@@ -2,4 +2,8 @@ setup.py
 picoparse/__init__.py
 picoparse/text.py
 examples/xml.py
+test.py
+tests/__init__.py
+tests/utils.py
+tests/core_parsers.py
 README.markdown
