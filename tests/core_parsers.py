@@ -6,6 +6,7 @@ from picoparse import any_token, one_of, not_one_of, satisfies, eof
 from picoparse import many, many1, many_until, many_until1, n_of, optional
 from picoparse import sep, sep1
 from picoparse import cue, follow, seq, string
+from picoparse import not_followed_by, remaining
 
 from utils import run, runp, ParserTestCase
 
@@ -234,13 +235,24 @@ class TestSequencingCombinators(ParserTestCase):
             self.assertEquals(run(abc_caseless, s), l)
         self.assertNoMatch(abc_caseless, '')
         
+
+as_then_remaining = p(cue, many_as, remaining)
+
         
+class TestFuture(ParserTestCase):
+    def testremaining():
+        self.assertEquals(run(remaining, ''), []) # broken!
+
+
+    
+    
                 
 if __name__ == '__main__':
     unittest.main()
 
 __all__ = ['TestTokenConsumers', 'TestManyCombinators', 
            'TestSeperatorCombinators', 'TestSequencingCombinators',
+           'TestFuture'
            ]
 
 
