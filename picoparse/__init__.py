@@ -32,6 +32,26 @@ class NoMatch(Exception):
     def __str__(self):
         return getattr(self, 'message', '')
 
+class DefaultDiagnostics(object):
+    def __init__(self):
+        self.tokens = []
+        self.offset = 1
+    
+    def error_text(self, location, error):
+        pass
+    
+    def cut(self, col):
+        if col is None:
+            col = self.offset + len(self.tokens)
+        to_cut = col - self.offset
+        self.tokens = self.tokens[to_cut:]
+        self.offset += to_cut
+    
+    def wrap(self, stream):
+        for r in izip(stream, count(1)):
+            self.tokens.append(r)
+            yield r
+
 class BufferWalker(object):
     """BufferWalker wraps up an iterable and provides an API for infinite lookahead
     but retains laziness. 
@@ -50,10 +70,10 @@ class BufferWalker(object):
     You can test the BufferWalker for Truthiness; if there is still parsable input then 
     it will be truthy, if not, falsy.
     """
-    def __init__(self, source, wrapper):
-        if wrapper is None:
-            wrapper = lambda x: izip(x, count(1))
-        self.source = wrapper(iter(source))
+    def __init__(self, source, diag):
+        if diag is None:
+            diag = DefaultDiagnostics()
+        self.source = diag.wrap(iter(source))
         try:
             self.buffer = [self.source.next()]
         except StopIteration:
@@ -63,6 +83,7 @@ class BufferWalker(object):
         self.depth = 0
         self.offset = 0
         self.commit_depth = 0
+        self.diag = diag
     
     def __nonzero__(self):
         return self.peek() is not None
@@ -121,6 +142,7 @@ class BufferWalker(object):
         self.offset += self.index
         self.index = 0
         self.depth = 0
+        self.diag.cut(self.pos())
     
     def choice(self, *parsers):
         if not parsers:
