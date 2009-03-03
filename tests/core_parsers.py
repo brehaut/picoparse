@@ -237,16 +237,33 @@ class TestSequencingCombinators(ParserTestCase):
         
 
 as_then_remaining = p(cue, many_as, remaining)
+as_then_not_b = p(follow, many_as, p(not_followed_by, one_b))
 
         
 class TestFuture(ParserTestCase):
-    def testremaining():
-        self.assertEquals(run(remaining, ''), []) # broken!
+    def testremaining(self):
+        self.assertEquals(run(remaining, ''), []) 
+        self.assertEquals(run(as_then_remaining, ''), []) 
+        self.assertEquals(run(as_then_remaining, 'a'), []) 
+        self.assertEquals(run(as_then_remaining, 'aa'), []) 
+        self.assertEquals(run(as_then_remaining, 'b'), ['b']) 
+        self.assertEquals(run(as_then_remaining, 'ab'), ['b'])     
+        self.assertEquals(run(as_then_remaining, 'abb'), ['b','b']) 
+        self.assertEquals(run(as_then_remaining, 'aabb'), ['b','b']) 
 
-
-    
-    
+    def testnot_followed_By(self):
+        self.assertEquals(run(as_then_not_b, ''), [])
+        self.assertEquals(run(as_then_not_b, 'a'), ['a'])
+        self.assertEquals(run(as_then_not_b, 'aa'), ['a','a'])
+        self.assertEquals(run(as_then_not_b, 'c'), [])
+        self.assertEquals(run(as_then_not_b, 'ac'), ['a'])
+        self.assertEquals(run(as_then_not_b, 'aac'), ['a','a'])
                 
+        self.assertNoMatch(as_then_not_b, 'b')
+        self.assertNoMatch(as_then_not_b, 'ab')
+        self.assertNoMatch(as_then_not_b, 'aab')
+
+                        
 if __name__ == '__main__':
     unittest.main()
 
