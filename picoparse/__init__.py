@@ -25,6 +25,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 from functools import partial
+from itertools import izip, count
 import threading
 
 class NoMatch(Exception):
@@ -49,8 +50,10 @@ class BufferWalker(object):
     You can test the BufferWalker for Truthiness; if there is still parsable input then 
     it will be truthy, if not, falsy.
     """
-    def __init__(self, source):
-        self.source = iter(source)
+    def __init__(self, source, wrapper):
+        if wrapper is None:
+            wrapper = lambda x: izip(x, count(1))
+        self.source = wrapper(iter(source))
         try:
             self.buffer = [self.source.next()]
         except StopIteration:
@@ -59,6 +62,7 @@ class BufferWalker(object):
         self.len = len(self.buffer)
         self.depth = 0
         self.offset = 0
+        self.commit_depth = 0
     
     def __nonzero__(self):
         return self.peek() is not None
@@ -69,39 +73,46 @@ class BufferWalker(object):
             for i in range(size):
                 self.buffer.append(self.source.next())
         except StopIteration:
-            self.buffer.append(None)
+            self.buffer.append((None, None))
         self.len = len(self.buffer)
     
     def next(self):
         """Returns the next item or None"""
         self.index += 1
         t = self.peek()
-        if self.depth == 0:
+        if not self.depth:
             self.cut()
         return t
     
-    def peek(self):
-        """Returns the current item or None"""
+    def current(self):
+        """Returns the current (token, position) or (None,None)"""
         if self.index >= self.len:
-            self._fill((self.index - self.len) + 1) 
-        return self.buffer[self.index] if self.index < self.len else None
+            self._fill((self.index - self.len) + 1)
+        return self.buffer[self.index] if self.index < self.len else (None, None)
     
-    def attempt(self):
-        result = self.depth
-        self.depth += 1
-        return result
+    def peek(self):
+        """Returns the current token or None"""
+        return self.current()[0]
+    
+    def pos(self):
+        """Returns the current position or None"""
+        return self.current()[1]
     
     def fail(self):
         raise NoMatch()
     
-    def commit(self, depth = None):
-        if self.depth < 0:
-            raise Exception("commit without corresponding attempt")
-        if depth is None:
-            self.depth -= 1
-        elif self.depth > depth:
-            self.depth = depth
-        if self.depth == 0:
+    def tri(self, parser, *args, **kwargs):
+        old_depth = self.commit_depth
+        self.commit_depth = self.depth
+        self.depth += 1
+        result = parser(*args, **kwargs)
+        commit()
+        self.commit_depth = old_depth
+        return result
+    
+    def commit(self):
+        self.depth = self.commit_depth
+        if not self.depth:
             self.cut()
     
     def cut(self):
@@ -123,7 +134,7 @@ class BufferWalker(object):
             except NoMatch:
                 if self.offset != start_offset or self.depth < start_depth:
                     if self.depth < start_depth:
-                        raise Exception("Commit / cut called")
+                        raise Exception("Picoparse: Internal error")
                     raise
                 if self.depth > start_depth:
                     self.depth = start_depth
@@ -140,21 +151,18 @@ next = lambda: local_ps.value.next()
 peek = lambda: local_ps.value.peek()
 fail = lambda: local_ps.value.fail()
 commit = lambda: local_ps.value.commit()
-cut = lambda: local_ps.value.cut()
 choice = lambda *options: local_ps.value.choice(*options)
 is_eof = lambda: bool(local_ps.value)
+pos = lambda: local_ps.value.pos()
 
 def tri(parser):
     def tri_block(*args, **kwargs):
-        depth = local_ps.value.attempt()
-        result = parser(*args, **kwargs)
-        local_ps.value.commit(depth)
-        return result
+        return local_ps.value.tri(parser, *args, **kwargs)
     return tri_block
 
-def run_parser(parser, input):
+def run_parser(parser, input, wrapper=None):
     old = getattr(local_ps, 'value', None)
-    local_ps.value = BufferWalker(input)
+    local_ps.value = BufferWalker(input, wrapper)
     try:
       result = parser(), remaining()
     except NoMatch, e:
