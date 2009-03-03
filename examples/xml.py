@@ -31,7 +31,7 @@ Comments throughout the file explain what is going on
 # You dont need to understand them all right away. This style of parser library lends itself 
 # to learning and groking small pieces at a time
 from picoparse import one_of, many, many1, not_one_of, run_parser, tri, commit, optional, fail
-from picoparse import choice, string, peek, cut, string, eof, many_until, any_token, satisfies
+from picoparse import choice, string, peek, string, eof, many_until, any_token, satisfies
 from picoparse import sep, sep1, compose, cue
 from picoparse.text import build_string, caseless_string, quoted, quote, whitespace, whitespace1
 from picoparse.text import lexeme

@@ -2,10 +2,12 @@ import unittest
 
 from functools import partial as p
 from picoparse import run_parser, NoMatch
-from picoparse import any_token, one_of, not_one_of, satisfies
-from picoparse import many, many1, many_until
+from picoparse import any_token, one_of, not_one_of, satisfies, eof
+from picoparse import many, many1, many_until, many_until1, n_of, optional
+from picoparse import sep, sep1
+from picoparse import cue, follow, seq, string
 
-from utils import run, runp
+from utils import run, runp, ParserTestCase
 
 # some simple parsers
 nothing = p(one_of, '')
@@ -19,7 +21,7 @@ always_satisfies = p(satisfies, lambda i: True)
 never_satisfies = p(satisfies, lambda i: False)
 one_b_to_d = p(satisfies, lambda i: 'b' <= i <= 'd')
 
-class TestTokenConsumers(unittest.TestCase):
+class TestTokenConsumers(ParserTestCase):
     """This TestCase checks that all the primative token consumers work as expected.
     """
     def testany_token(self):
@@ -39,11 +41,11 @@ class TestTokenConsumers(unittest.TestCase):
         self.assertEquals(run(one_a_or_b, 'bc'), 'b')
         
         # no match
-        self.assertRaises(NoMatch, runp(one_a, 'b'))
-        self.assertRaises(NoMatch, runp(one_a_or_b, 'c'))
-        self.assertRaises(NoMatch, runp(one_a, ''))
-        self.assertRaises(NoMatch, runp(one_a_or_b, ''))
-        self.assertRaises(NoMatch, runp(nothing, 'a'))
+        self.assertNoMatch(one_a, 'b')
+        self.assertNoMatch(one_a_or_b, 'c')
+        self.assertNoMatch(one_a, '')
+        self.assertNoMatch(one_a_or_b, '')
+        self.assertNoMatch(nothing, 'a')
         
     def testnot_one_of(self):
         # matches
@@ -54,32 +56,42 @@ class TestTokenConsumers(unittest.TestCase):
         self.assertEquals(run(everything, 'ab'), 'a')
         
         # no match
-        self.assertRaises(NoMatch, runp(not_a, 'a'))
-        self.assertRaises(NoMatch, runp(not_a_or_b, 'a'))
-        self.assertRaises(NoMatch, runp(not_a_or_b, 'b'))
+        self.assertNoMatch(not_a, 'a')
+        self.assertNoMatch(not_a_or_b, 'a')
+        self.assertNoMatch(not_a_or_b, 'b')
     
     def testsatisfies(self):
         self.assertEquals(run(always_satisfies, 'a'), 'a')
         self.assertEquals(run(always_satisfies, 'b'), 'b')
-        self.assertRaises(NoMatch, runp(always_satisfies, ''))
+        self.assertNoMatch(always_satisfies, '')
 
-        self.assertRaises(NoMatch, runp(never_satisfies, 'a'))
-        self.assertRaises(NoMatch, runp(never_satisfies, 'b'))
-        self.assertRaises(NoMatch, runp(never_satisfies, ''))
+        self.assertNoMatch(never_satisfies, 'a')
+        self.assertNoMatch(never_satisfies, 'b')
+        self.assertNoMatch(never_satisfies, '')
 
         self.assertEquals(run(one_b_to_d, 'b'), 'b')
         self.assertEquals(run(one_b_to_d, 'c'), 'c')
         self.assertEquals(run(one_b_to_d, 'd'), 'd')
         self.assertEquals(run(one_b_to_d, 'bc'), 'b')
-        self.assertRaises(NoMatch, runp(one_b_to_d, ''))
-        self.assertRaises(NoMatch, runp(one_b_to_d, 'a'))
-        self.assertRaises(NoMatch, runp(one_b_to_d, 'e'))
+        self.assertNoMatch(one_b_to_d, '')
+        self.assertNoMatch(one_b_to_d, 'a')
+        self.assertNoMatch(one_b_to_d, 'e')
 
+    def testeof(self):
+        self.assertEquals(run(eof, ''), None)
+        self.assertNoMatch(eof, 'a')
+        
 
 many_as = p(many, one_a)
 at_least_one_a = p(many1, one_a)
+one_b = p(one_of, 'b')
+some_as_then_b = p(many_until, one_a, one_b)
+at_least_one_a_then_b = p(many_until1, one_a, one_b)
+three_as = p(n_of, one_a, 3)
+zero_or_one_a = p(optional, one_a, None)
 
-class TestManyCombinators(unittest.TestCase):
+
+class TestManyCombinators(ParserTestCase):
     """Tests the simple many* parser combinators.
     """
     
@@ -92,20 +104,143 @@ class TestManyCombinators(unittest.TestCase):
         self.assertEquals(run(many_as, 'b'), [])
         self.assertEquals(run(many_as, 'ab'), ['a'])
         self.assertEquals(run(many_as, 'aab'), ['a','a'])
-        self.assertEquals(run(many_as, 'aaab'), ['a','a', 'a'])
+        self.assertEquals(run(many_as, 'aaab'), ['a','a','a'])
 
     def testmany1(self):
-        self.assertRaises(NoMatch, runp(at_least_one_a, ''))
+        self.assertNoMatch(at_least_one_a, '')
         self.assertEquals(run(at_least_one_a, 'a'), ['a'])
         self.assertEquals(run(at_least_one_a, 'aa'), ['a','a'])
-        self.assertEquals(run(at_least_one_a, 'aaa'), ['a','a', 'a'])
+        self.assertEquals(run(at_least_one_a, 'aaa'), ['a','a','a'])
 
-        self.assertRaises(NoMatch, runp(at_least_one_a, 'b'))
+        self.assertNoMatch(at_least_one_a, 'b')
         self.assertEquals(run(at_least_one_a, 'ab'), ['a'])
         self.assertEquals(run(at_least_one_a, 'aab'), ['a','a'])
-        self.assertEquals(run(at_least_one_a, 'aaab'), ['a','a', 'a'])
+        self.assertEquals(run(at_least_one_a, 'aaab'), ['a','a','a'])
+    
+    def testmany_until(self):
+        self.assertEquals(run(some_as_then_b, 'b'), ([], 'b'))
+        self.assertEquals(run(some_as_then_b, 'ab'), (['a'], 'b'))
+        self.assertEquals(run(some_as_then_b, 'aab'), (['a','a'], 'b'))
+        self.assertEquals(run(some_as_then_b, 'aaab'), (['a','a','a'], 'b'))
+        
+        self.assertNoMatch(some_as_then_b, '')
+        self.assertNoMatch(some_as_then_b, 'a')
+        self.assertNoMatch(some_as_then_b, 'aa')
+        
+    def testmany_until1(self):
+        self.assertNoMatch(at_least_one_a_then_b, 'b')
+        self.assertEquals(run(at_least_one_a_then_b, 'ab'), (['a'], 'b'))
+        self.assertEquals(run(at_least_one_a_then_b, 'aab'), (['a','a'], 'b'))
+        self.assertEquals(run(at_least_one_a_then_b, 'aaab'), (['a','a','a'], 'b'))
 
+        self.assertNoMatch(at_least_one_a_then_b, '')
+        self.assertNoMatch(at_least_one_a_then_b, 'a')
+        self.assertNoMatch(at_least_one_a_then_b, 'aa')
+    
+    def testn_of(self):
+        self.assertNoMatch(three_as, '')
+        self.assertNoMatch(three_as, 'a')
+        self.assertNoMatch(three_as, 'aa')
+        self.assertEquals(run(three_as, 'aaa'), ['a','a','a'])
+        self.assertEquals(run(three_as, 'aaaa'), ['a', 'a', 'a'])
+        
+        self.assertNoMatch(three_as, 'b')        
+        self.assertNoMatch(three_as, 'ab')
+        self.assertNoMatch(three_as, 'aab')
+    
+    def testoptional(self):
+        self.assertEquals(run(zero_or_one_a, ''), None)
+        self.assertEquals(run(zero_or_one_a, 'a'), 'a')
+        self.assertEquals(run(zero_or_one_a, 'aa'), 'a')
+        self.assertEquals(run(zero_or_one_a, 'b'), None)
+
+
+as_sep_by_b = p(sep, one_a, one_b)
+one_or_more_as_sep_by_b = p(sep1, one_a, one_b)
+
+
+class TestSeperatorCombinators(ParserTestCase):
+    def testsep(self):
+        self.assertEquals(run(as_sep_by_b, ''), [])
+        self.assertEquals(run(as_sep_by_b, 'a'), ['a'])        
+        self.assertNoMatch(as_sep_by_b, 'ab')
+        self.assertEquals(run(as_sep_by_b, 'aba'), ['a','a'])      
+        self.assertNoMatch(as_sep_by_b, 'abab')
+        self.assertEquals(run(as_sep_by_b, 'ababa'), ['a','a','a'])      
+        self.assertEquals(run(as_sep_by_b, 'b'), [])
+        self.assertEquals(run(as_sep_by_b, 'ba'), [])
+        self.assertEquals(run(as_sep_by_b, 'bab'), [])
+        
+    def testsep1(self):
+        self.assertNoMatch(one_or_more_as_sep_by_b, '')
+        self.assertEquals(run(one_or_more_as_sep_by_b, 'a'), ['a'])        
+        self.assertNoMatch(one_or_more_as_sep_by_b, 'ab')
+        self.assertEquals(run(one_or_more_as_sep_by_b, 'aba'), ['a','a'])      
+        self.assertNoMatch(one_or_more_as_sep_by_b, 'abab')
+        self.assertEquals(run(one_or_more_as_sep_by_b, 'ababa'), ['a','a','a'])      
+        self.assertNoMatch(one_or_more_as_sep_by_b, 'b')
+        self.assertNoMatch(one_or_more_as_sep_by_b, 'ba')
+        self.assertNoMatch(one_or_more_as_sep_by_b, 'bab')
+        
+    
+a_then_ret_b = p(cue, one_a, one_b)
+ret_a_then_b = p(follow, one_a, one_b)
+a_then_ab_then_b = p(seq, ('A', one_a), one_a, one_b, ('B', one_b))
+abc = p(string, 'abc')
+abc_caseless = p(string, ['aA','bB', 'cC'])
+
+
+class TestSequencingCombinators(ParserTestCase):
+    def testcue(self):
+        self.assertEquals(run(a_then_ret_b, 'ab'), 'b')
+        self.assertNoMatch(a_then_ret_b, '')
+        self.assertNoMatch(a_then_ret_b, 'a')
+        self.assertNoMatch(a_then_ret_b, 'b')
+        self.assertEquals(run(a_then_ret_b, 'aba'), 'b')
+
+    def testfollow(self):
+        self.assertEquals(run(ret_a_then_b, 'ab'), 'a')
+        self.assertNoMatch(ret_a_then_b, '')
+        self.assertNoMatch(ret_a_then_b, 'a')
+        self.assertNoMatch(ret_a_then_b, 'b')
+        self.assertEquals(run(ret_a_then_b, 'aba'), 'a')
+
+    def testseq(self):
+        self.assertNoMatch(a_then_ab_then_b, '')
+        self.assertNoMatch(a_then_ab_then_b, 'a')
+        self.assertNoMatch(a_then_ab_then_b, 'ab')
+        self.assertNoMatch(a_then_ab_then_b, 'aa')        
+        self.assertNoMatch(a_then_ab_then_b, 'aab')        
+        self.assertNoMatch(a_then_ab_then_b, 'aaa')        
+        self.assertNoMatch(a_then_ab_then_b, 'aaba')       
+        self.assertEquals(run(a_then_ab_then_b, 'aabb'),{'A':'a', 'B':'b'}) 
+        self.assertEquals(run(a_then_ab_then_b, 'aabba'),{'A':'a', 'B':'b'})
+    
+    def teststring(self):
+        self.assertEquals(run(abc, 'abc'), ['a','b','c'])
+        self.assertEquals(run(abc, 'abca'), ['a','b','c'])
+        self.assertNoMatch(abc, '')
+        self.assertNoMatch(abc, 'a')
+        self.assertNoMatch(abc, 'ab')        
+        self.assertNoMatch(abc, 'aa')
+        self.assertNoMatch(abc, 'aba')
+        self.assertNoMatch(abc, 'abb')
+    
+        for triple in [(a, b, c) for a in 'aA' for b in 'bB' for c in 'cC']:
+            s = u''.join(triple)
+            l = list(triple)
+            self.assertEquals(run(abc_caseless, s), l)
+            s += 'a'
+            self.assertEquals(run(abc_caseless, s), l)
+        self.assertNoMatch(abc_caseless, '')
+        
+        
+                
 if __name__ == '__main__':
     unittest.main()
 
-__all__ = ['TestTokenConsumers', 'TestManyCombinators', ]
+__all__ = ['TestTokenConsumers', 'TestManyCombinators', 
+           'TestSeperatorCombinators', 'TestSequencingCombinators',
+           ]
+
+
