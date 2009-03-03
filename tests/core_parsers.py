@@ -5,6 +5,7 @@ from picoparse import run_parser, NoMatch
 from picoparse import any_token, one_of, not_one_of, satisfies, eof
 from picoparse import many, many1, many_until, many_until1, n_of, optional
 from picoparse import sep, sep1
+from picoparse import cue, follow, seq
 
 from utils import run, runp, ParserTestCase
 
@@ -180,6 +181,37 @@ class TestSeperatorCombinators(ParserTestCase):
         self.assertNoMatch(one_or_more_as_sep_by_b, 'b')
         self.assertNoMatch(one_or_more_as_sep_by_b, 'ba')
         self.assertNoMatch(one_or_more_as_sep_by_b, 'bab')
+        
+    
+a_then_ret_b = p(cue, one_a, one_b)
+ret_a_then_b = p(follow, one_a, one_b)
+a_then_ab_then_b = p(seq, ('A', one_a), one_a, one_b, ('B', one_b))
+
+class TestSequencingCombinators(ParserTestCase):
+    def testcue():
+        self.assertEquals(run(a_then_ret_b, 'ab'), 'b')
+        self.NoMatch(a_then_ret_b, '')
+        self.NoMatch(a_then_ret_b, 'a')
+        self.NoMatch(a_then_ret_b, 'b')
+        self.assertEquals(run(a_then_ret_b, 'aba'), 'b')
+
+    def testfollow():
+        self.assertEquals(run(ret_a_then_b, 'ab'), 'a')
+        self.NoMatch(ret_a_then_b, '')
+        self.NoMatch(ret_a_then_b, 'a')
+        self.NoMatch(ret_a_then_b, 'b')
+        self.assertEquals(run(ret_a_then_b, 'aba'), 'a')
+
+    def testseq():
+        self.assertNoMatch(a_then_ab_then_b, '')
+        self.assertNoMatch(a_then_ab_then_b, 'a')
+        self.assertNoMatch(a_then_ab_then_b, 'ab')
+        self.assertNoMatch(a_then_ab_then_b, 'aa')        
+        self.assertNoMatch(a_then_ab_then_b, 'aab')        
+        self.assertNoMatch(a_then_ab_then_b, 'aaa')        
+        self.assertNoMatch(a_then_ab_then_b, 'aaba')       
+        self.assertEquals(run(a_then_ab_then_b, 'aabb'),{'A':'a', 'B':'b'}) 
+        self.assertEquals(run(a_then_ab_then_b, 'aabba'),{'A':'a', 'B':'b'})
         
         
 if __name__ == '__main__':
