@@ -56,6 +56,7 @@ class DefaultDiagnostics(object):
 class EOF(object):
     def __str__(self): return "EOF"
     def __repr__(self): return "EOF"
+    def __nonzero__(self): return False
 
 
 EndOfFile = EOF()
@@ -107,7 +108,7 @@ class BufferWalker(object):
         self.len = len(self.buffer)
     
     def next(self):
-        """Returns the next item or None"""
+        """Advances to and returns the next token or returns EndOfFile"""
         self.index += 1
         t = self.peek()
         if not self.depth:
@@ -115,13 +116,13 @@ class BufferWalker(object):
         return t
     
     def current(self):
-        """Returns the current (token, position) or (None,None)"""
+        """Returns the current (token, position) or (EndOfFile, None)"""
         if self.index >= self.len:
             self._fill((self.index - self.len) + 1)
         return self.buffer[self.index] if self.index < self.len else (EndOfFile, None)
     
     def peek(self):
-        """Returns the current token or None"""
+        """Returns the current token or EndOfFile"""
         return self.current()[0]
     
     def pos(self):
@@ -232,7 +233,7 @@ def any_token():
     Fails if there is no more tokens
     """
     ch = peek()
-    if not ch:
+    if ch is EndOfFile:
         fail()
     next()
     return ch
@@ -244,7 +245,7 @@ def one_of(these):
     """
     ch = peek()
     try:
-        if (ch is None) or (ch not in these):
+        if (ch is EndOfFile) or (ch not in these):
             fail()
     except TypeError:
         if ch != these:
@@ -259,7 +260,7 @@ def not_one_of(these):
     """
     ch = peek()
     try:
-        if (ch is None) or (ch in these):
+        if (ch is EndOfFile) or (ch in these):
             fail()
     except TypeError:
         if ch != these:
@@ -274,7 +275,7 @@ def satisfies(guard):
     This is the a generalisation of one_of.
     """
     i = peek()
-    if (i is None) or (not guard(i)):
+    if (i is EndOfFile) or (not guard(i)):
         fail()
     next()
     return i
@@ -393,7 +394,7 @@ def remaining():
     """Returns the remaining input that has not been parsed.
     """
     tokens = []
-    while peek():
+    while peek() is not EndOfFile:
         tokens.append(peek())
         next()
     return tokens
