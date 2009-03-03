@@ -1,3 +1,48 @@
+#!/usr/bin/env python
+# Copyright (c) 2009, Andrew Brehaut, Steven Ashley
+# All rights reserved.
+# 
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 
+# * Redistributions of source code must retain the above copyright notice, 
+#   this list of conditions and the following disclaimer.
+# * Redistributions in binary form must reproduce the above copyright notice, 
+#   this list of conditions and the following disclaimer in the documentation  
+#   and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE 
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+# POSSIBILITY OF SUCH DAMAGE.
+
+"""calculator.py - an example of infix expression parsing.
+
+This example shows a simple approach to parsing a recursive infix expression 
+using picoparse. It supports the four basic arithmetic operators, integer and 
+floating point numbers, negatives, precedence order parenthesis.
+
+The first half of the program defines a small set of syntax tree classes that
+will be created by the various parsers. These nodes also know how to evaluate 
+themselves.
+
+The second half describes the parser itself. `expression` is the top level 
+parser, and is described last as a specialisation of `choice` over binary 
+operations and terms.
+
+This parser assumes that whenever a bin_op is encountered, the left item is a 
+term, and the right is another complex expression. Operator precedence is 
+worked out by asking the node to `merge` with its right hand node. Examine
+`bin_op` and `BinaryNode.merge` to see how this works.
+"""
+
 from functools import partial
 from string import digits as digit_chars
 
@@ -14,7 +59,12 @@ operator_functions = {
     '/': lambda l, r: l / r,
 }
     
+
 class ValueNode(object):
+    """This is a leaf node for single numeric values. 
+    
+    Evaluates to itself, has maximum precedence
+    """
     def __init__(self, value):
         self.left = value
         self.precedence = 1000
@@ -27,6 +77,11 @@ class ValueNode(object):
 
 
 class ParentheticalNode(object):
+    """This node encapsulates a child node. 
+    
+    This node will be merged into BinaryNodes as if it were a single 
+    value; This protects parenthesized trees from having order adjusted.   
+    """
     def __init__(self, child):
         self.child = child
         self.precedence = 1000
@@ -46,7 +101,7 @@ class BinaryNode(object):
         self.precedence = operators.index(op)
     
     def merge(self, right):
-        if self.precedence > right.precedence:
+        if self.precedence >= right.precedence:
             self.right = right.left
             right.left = self
             return right
@@ -55,14 +110,18 @@ class BinaryNode(object):
             return self
 
     def __repr__(self):
-        return "%s(%r, %r, %r)" % (self.__class__.__name__, self.left, self.op, self.right)
+        return "%s(%r, %r, %r)" % (self.__class__.__name__, self.left, 
+                                                            self.op, 
+                                                            self.right)
         
     def evaluate(self):
-        return operator_functions[self.op](self.left.evaluate(), self.right.evaluate())
+        return operator_functions[self.op](self.left.evaluate(), 
+                                           self.right.evaluate())
 
 
 # parser
-digits = partial(lexeme, compose(build_string, partial(many1, partial(one_of, digit_chars))))
+digits = partial(lexeme, compose(build_string, 
+                                 partial(many1, partial(one_of, digit_chars))))
 operator = partial(lexeme, partial(one_of, operators))
     
 @tri
@@ -110,23 +169,16 @@ expression = partial(choice, bin_op, term)
     
 run_calculator = partial(run_text_parser, expression)
 
-
-print "calculator results"
 def calc(exp):
     tree, _ = run_calculator(exp)
     print exp, '=', tree.evaluate()
     print tree
     print
 
-calc('4')
-calc('4 + 5')
-calc('(4 + 5)')
-print
+if __name__ == "__main__":
+    exp = True
+    while exp:
+        exp = raw_input('> ')
+        calc(exp)
 
-calc('5 + 20 / 5')
-calc('(5 + 20) / 5')
-print
-calc('5 + (4 * 5) / 5')
-
-calc('0.5 * -2')
-calc('0.25 * (-20 + -1 * 20)')
+    
