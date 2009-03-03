@@ -70,7 +70,7 @@ class BufferWalker(object):
     You can test the BufferWalker for Truthiness; if there is still parsable input then 
     it will be truthy, if not, falsy.
     """
-    def __init__(self, source, diag):
+    def __init__(self, source, diag=None):
         if diag is None:
             diag = DefaultDiagnostics()
         self.source = diag.wrap(iter(source))

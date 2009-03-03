@@ -3,7 +3,7 @@ import unittest
 from functools import partial as p
 from picoparse import run_parser, NoMatch
 from picoparse import any_token, one_of, not_one_of, satisfies
-from picoparse import many, many1, many_until
+from picoparse import many, many1, many_until, many_until1, n_of
 
 from utils import run, runp, ParserTestCase
 
@@ -54,35 +54,36 @@ class TestTokenConsumers(ParserTestCase):
         self.assertEquals(run(everything, 'ab'), 'a')
         
         # no match
-        self.assertRaises(NoMatch, runp(not_a, 'a'))
-        self.assertRaises(NoMatch, runp(not_a_or_b, 'a'))
-        self.assertRaises(NoMatch, runp(not_a_or_b, 'b'))
+        self.assertNoMatch(not_a, 'a')
+        self.assertNoMatch(not_a_or_b, 'a')
+        self.assertNoMatch(not_a_or_b, 'b')
     
     def testsatisfies(self):
         self.assertEquals(run(always_satisfies, 'a'), 'a')
         self.assertEquals(run(always_satisfies, 'b'), 'b')
-        self.assertRaises(NoMatch, runp(always_satisfies, ''))
+        self.assertNoMatch(always_satisfies, '')
 
-        self.assertRaises(NoMatch, runp(never_satisfies, 'a'))
-        self.assertRaises(NoMatch, runp(never_satisfies, 'b'))
-        self.assertRaises(NoMatch, runp(never_satisfies, ''))
+        self.assertNoMatch(never_satisfies, 'a')
+        self.assertNoMatch(never_satisfies, 'b')
+        self.assertNoMatch(never_satisfies, '')
 
         self.assertEquals(run(one_b_to_d, 'b'), 'b')
         self.assertEquals(run(one_b_to_d, 'c'), 'c')
         self.assertEquals(run(one_b_to_d, 'd'), 'd')
         self.assertEquals(run(one_b_to_d, 'bc'), 'b')
-        self.assertRaises(NoMatch, runp(one_b_to_d, ''))
-        self.assertRaises(NoMatch, runp(one_b_to_d, 'a'))
-        self.assertRaises(NoMatch, runp(one_b_to_d, 'e'))
+        self.assertNoMatch(one_b_to_d, '')
+        self.assertNoMatch(one_b_to_d, 'a')
+        self.assertNoMatch(one_b_to_d, 'e')
 
 
 many_as = p(many, one_a)
 at_least_one_a = p(many1, one_a)
 one_b = p(one_of, 'b')
 some_as_then_b = p(many_until, one_a, one_b)
+at_least_one_a_then_b = p(many_until1, one_a, one_b)
+three_as = p(n_of, one_a, 3)
 
-
-class TestManyCombinators(unittest.TestCase):
+class TestManyCombinators(ParserTestCase):
     """Tests the simple many* parser combinators.
     """
     
@@ -95,27 +96,49 @@ class TestManyCombinators(unittest.TestCase):
         self.assertEquals(run(many_as, 'b'), [])
         self.assertEquals(run(many_as, 'ab'), ['a'])
         self.assertEquals(run(many_as, 'aab'), ['a','a'])
-        self.assertEquals(run(many_as, 'aaab'), ['a','a', 'a'])
+        self.assertEquals(run(many_as, 'aaab'), ['a','a','a'])
 
     def testmany1(self):
-        self.assertRaises(NoMatch, runp(at_least_one_a, ''))
+        self.assertNoMatch(at_least_one_a, '')
         self.assertEquals(run(at_least_one_a, 'a'), ['a'])
         self.assertEquals(run(at_least_one_a, 'aa'), ['a','a'])
-        self.assertEquals(run(at_least_one_a, 'aaa'), ['a','a', 'a'])
+        self.assertEquals(run(at_least_one_a, 'aaa'), ['a','a','a'])
 
-        self.assertRaises(NoMatch, runp(at_least_one_a, 'b'))
+        self.assertNoMatch(at_least_one_a, 'b')
         self.assertEquals(run(at_least_one_a, 'ab'), ['a'])
         self.assertEquals(run(at_least_one_a, 'aab'), ['a','a'])
-        self.assertEquals(run(at_least_one_a, 'aaab'), ['a','a', 'a'])
+        self.assertEquals(run(at_least_one_a, 'aaab'), ['a','a','a'])
     
     def testmany_until(self):
         self.assertEquals(run(some_as_then_b, 'b'), ([], 'b'))
         self.assertEquals(run(some_as_then_b, 'ab'), (['a'], 'b'))
-        self.assertEquals(run(some_as_then_b, 'aab'), (['a', 'a'], 'b'))
-        self.assertEquals(run(some_as_then_b, 'aaab'), (['a', 'a', 'a'], 'b'))
+        self.assertEquals(run(some_as_then_b, 'aab'), (['a','a'], 'b'))
+        self.assertEquals(run(some_as_then_b, 'aaab'), (['a','a','a'], 'b'))
         
-        self.assertRaises(NoMatch, runp(some_as_then_b, 'aa'))
-        self.assertRaises(NoMatch, runp(some_as_then_b, 'aa'))
+        self.assertNoMatch(some_as_then_b, '')
+        self.assertNoMatch(some_as_then_b, 'a')
+        self.assertNoMatch(some_as_then_b, 'aa')
+        
+    def testmany_until1(self):
+        self.assertNoMatch(at_least_one_a_then_b, 'b')
+        self.assertEquals(run(at_least_one_a_then_b, 'ab'), (['a'], 'b'))
+        self.assertEquals(run(at_least_one_a_then_b, 'aab'), (['a','a'], 'b'))
+        self.assertEquals(run(at_least_one_a_then_b, 'aaab'), (['a','a','a'], 'b'))
+
+        self.assertNoMatch(at_least_one_a_then_b, '')
+        self.assertNoMatch(at_least_one_a_then_b, 'a')
+        self.assertNoMatch(at_least_one_a_then_b, 'aa')
+    
+    def testn_of(self):
+        self.assertNoMatch(three_as, '')
+        self.assertNoMatch(three_as, 'a')
+        self.assertNoMatch(three_as, 'aa')
+        self.assertEquals(run(three_as, 'aaa'), ['a','a','a'])
+        self.assertEquals(run(three_as, 'aaaa'), ['a', 'a', 'a'])
+        
+        self.assertNoMatch(three_as, 'b')        
+        self.assertNoMatch(three_as, 'ab')
+        self.assertNoMatch(three_as, 'aab')
 
 if __name__ == '__main__':
     unittest.main()
