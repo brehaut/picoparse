@@ -102,7 +102,7 @@ class BufferWalker(object):
         self.index += 1
         t = self.peek()
         if not self.depth:
-            self.cut()
+            self._cut()
         return t
     
     def current(self):
@@ -127,16 +127,16 @@ class BufferWalker(object):
         self.commit_depth = self.depth
         self.depth += 1
         result = parser(*args, **kwargs)
-        commit()
+        self.commit()
         self.commit_depth = old_depth
         return result
     
     def commit(self):
         self.depth = self.commit_depth
         if not self.depth:
-            self.cut()
+            self._cut()
     
-    def cut(self):
+    def _cut(self):
         self.buffer = self.buffer[self.index:]
         self.len = len(self.buffer)
         self.offset += self.index
@@ -176,6 +176,7 @@ commit = lambda: local_ps.value.commit()
 choice = lambda *options: local_ps.value.choice(*options)
 is_eof = lambda: bool(local_ps.value)
 pos = lambda: local_ps.value.pos()
+diag = lambda: local_ps.value.diag
 
 def tri(parser):
     def tri_block(*args, **kwargs):
