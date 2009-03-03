@@ -80,12 +80,22 @@ def separator():
     one_of(',')
     whitespace()
 
-token = partial(choice, dice_expression, number, operator)
+def parenthesised_expression():
+    whitespace()
+    one_of('(')
+    whitespace()
+    e = expression()
+    whitespace()
+    one_of(')')
+    whitespace()
+    return e
+
+token = partial(choice, dice_expression, number, operator, parenthesised_expression)
 
 expression = partial(many1, token)
 
 def expressions():
-    return sep(expression, separator)
+    return sep(partial(choice, parenthesised_expression, expression), separator)
 
 parse_exp = partial(run_parser, expressions)
 
