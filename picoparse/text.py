@@ -64,6 +64,7 @@ def quoted(parser=any_token):
     value, _ = many_until(parser, partial(one_of, quote_char))
     return build_string(value)
 
+
 class TextStreamWrapper(object):
     def __init__(self):
         self.lines = []
@@ -98,6 +99,7 @@ class TextStreamWrapper(object):
         self.col = 1
         self.row += 1
         self._line = []
+
 
 def run_text_parser(parser, input):
     return run_parser(parser, input, TextStreamWrapper().wrap)
