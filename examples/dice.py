@@ -31,18 +31,73 @@ from picoparse import choice, string, peek, string, eof, many_until, any_token, 
 from picoparse import sep, sep1, compose, cue
 
 import sys
+from random import randint
+
+OPERATORS = {
+    '+': 'OP_ADD',
+    '-': 'OP_SUB',
+    '*': 'OP_MUL',
+    '/': 'OP_DIV',
+}
+
+CODES = {
+    'OP_ADD': lambda x,y: x+y,
+    'OP_SUB': lambda x,y: x-y,
+    'OP_MUL': lambda x,y: x*y,
+    'OP_DIV': lambda x,y: x/y,
+    'OP_DICE': lambda x: sum(randint(1, x['SIDES']) for i in x['ROLLS']),
+    # 'OP_NUM': int,
+}
 
 decimal_digit = partial(one_of, '0123456789')
 
-number = compose(int, build_string)
+make_number = compose(int, build_string)
 
-def dice_exp():
-    multiplier = number(many1(decimal_digit))
+def number():
+    whitespace()
+    digits = many1(decimal_digit)
+    whitespace()
+    return make_number(digits)
+
+def operator():
+    whitespace()
+    op = one_of("+-/*")
+    whitespace()
+    return OPERATORS[op]
+
+@tri
+def dice_expression():
+    whitespace()
+    dice = number()
     one_of("dD")
-    sides = number(many(decimal_digit)) or 6
-    return multiplier, "D", sides
+    commit()
+    sides = number() or 6
+    whitespace()
+    return ('OP_DICE', {'ROLLS': dice, 'SIDES': sides})
 
-parse_exp = partial(run_parser, dice_exp)
+def separator():
+    whitespace()
+    one_of(',')
+    whitespace()
+
+def parenthesised_expression():
+    whitespace()
+    one_of('(')
+    whitespace()
+    e = expression()
+    whitespace()
+    one_of(')')
+    whitespace()
+    return e
+
+token = partial(choice, dice_expression, number, operator, parenthesised_expression)
+
+expression = partial(many1, token)
+
+def expressions():
+    return sep(partial(choice, parenthesised_expression, expression), separator)
+
+parse_exp = partial(run_parser, expressions)
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
