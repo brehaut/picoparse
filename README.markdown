@@ -13,8 +13,12 @@ core library is not specific to text and will work over any iterable type.
 ## Contents
 
  * The `picoparse` package is the core of the parser library. 
- * `picoparse.text` contains a few useful tools for building text oriented parsers.
- * `examples\xml.py` is an example implementation of a parser for a reasonable subset of xml.
+ * `picoparse.text` contains a few useful tools for building text oriented 
+    parsers.
+ * `examples\xml.py` is an example implementation of a parser for a reasonable 
+    subset of xml.
+ * `examples\calculatpr.py` is an example implementation of infix arithmetic
+    parser and evaluator.
  * `test.py` runs all the test cases found in `tests`
 
 ## Installing
