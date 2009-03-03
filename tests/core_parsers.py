@@ -5,7 +5,7 @@ from picoparse import run_parser, NoMatch
 from picoparse import any_token, one_of, not_one_of, satisfies
 from picoparse import many, many1, many_until
 
-from utils import run, runp
+from utils import run, runp, ParserTestCase
 
 # some simple parsers
 nothing = p(one_of, '')
@@ -19,7 +19,7 @@ always_satisfies = p(satisfies, lambda i: True)
 never_satisfies = p(satisfies, lambda i: False)
 one_b_to_d = p(satisfies, lambda i: 'b' <= i <= 'd')
 
-class TestTokenConsumers(unittest.TestCase):
+class TestTokenConsumers(ParserTestCase):
     """This TestCase checks that all the primative token consumers work as expected.
     """
     def testany_token(self):
@@ -39,11 +39,11 @@ class TestTokenConsumers(unittest.TestCase):
         self.assertEquals(run(one_a_or_b, 'bc'), 'b')
         
         # no match
-        self.assertRaises(NoMatch, runp(one_a, 'b'))
-        self.assertRaises(NoMatch, runp(one_a_or_b, 'c'))
-        self.assertRaises(NoMatch, runp(one_a, ''))
-        self.assertRaises(NoMatch, runp(one_a_or_b, ''))
-        self.assertRaises(NoMatch, runp(nothing, 'a'))
+        self.assertNoMatch(one_a, 'b')
+        self.assertNoMatch(one_a_or_b, 'c')
+        self.assertNoMatch(one_a, '')
+        self.assertNoMatch(one_a_or_b, '')
+        self.assertNoMatch(nothing, 'a')
         
     def testnot_one_of(self):
         # matches
@@ -78,6 +78,9 @@ class TestTokenConsumers(unittest.TestCase):
 
 many_as = p(many, one_a)
 at_least_one_a = p(many1, one_a)
+one_b = p(one_of, 'b')
+some_as_then_b = p(many_until, one_a, one_b)
+
 
 class TestManyCombinators(unittest.TestCase):
     """Tests the simple many* parser combinators.
@@ -104,6 +107,15 @@ class TestManyCombinators(unittest.TestCase):
         self.assertEquals(run(at_least_one_a, 'ab'), ['a'])
         self.assertEquals(run(at_least_one_a, 'aab'), ['a','a'])
         self.assertEquals(run(at_least_one_a, 'aaab'), ['a','a', 'a'])
+    
+    def testmany_until(self):
+        self.assertEquals(run(some_as_then_b, 'b'), ([], 'b'))
+        self.assertEquals(run(some_as_then_b, 'ab'), (['a'], 'b'))
+        self.assertEquals(run(some_as_then_b, 'aab'), (['a', 'a'], 'b'))
+        self.assertEquals(run(some_as_then_b, 'aaab'), (['a', 'a', 'a'], 'b'))
+        
+        self.assertRaises(NoMatch, runp(some_as_then_b, 'aa'))
+        self.assertRaises(NoMatch, runp(some_as_then_b, 'aa'))
 
 if __name__ == '__main__':
     unittest.main()
