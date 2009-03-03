@@ -76,7 +76,10 @@ class TextDiagnostics(object):
     def error_text(self, location, error):
         pass
     
-    def cut(self, (row, col)):
+    def cut(self, p):
+        row = self.row
+        if p:
+            row, _ = p
         to_cut = (row - 1) - self.offset 
         self.offset += to_cut
         self.lines = self.lines[to_cut:]
@@ -111,4 +114,4 @@ class TextDiagnostics(object):
 
 
 def run_text_parser(parser, input):
-    return run_parser(parser, input, TextStreamWrapper().wrap)
+    return run_parser(parser, input, TextDiagnostics())

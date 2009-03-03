@@ -34,7 +34,7 @@ from picoparse import one_of, many, many1, not_one_of, run_parser, tri, commit, 
 from picoparse import choice, string, peek, string, eof, many_until, any_token, satisfies
 from picoparse import sep, sep1, compose, cue
 from picoparse.text import build_string, caseless_string, quoted, quote, whitespace, whitespace1
-from picoparse.text import lexeme
+from picoparse.text import lexeme, run_text_parser
 from functools import partial
 
 # We define common primative parsers by partial application. This is similar to the lexical 
@@ -277,7 +277,7 @@ def attribute():
     lexeme(equals)
     return "ATTR", name, quoted()
 
-parse_xml = partial(run_parser, xml)
+parse_xml = partial(run_text_parser, xml)
 
 tokens, remaining = parse_xml("""
 <?xml version="1.0" ?>
