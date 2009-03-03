@@ -4,8 +4,8 @@
 
 Picoparse is a very small parser / scanner library for Python. It is built to make 
 constructing parsers  straight forward, and without the complications regular expressions 
-bring to the table. The design is heavily by 
-[Parsec](http://www.haskell.org/haskellwiki/Parsec) from Haskell.
+bring to the table. The design is inspired by the 
+[Parsec](http://www.haskell.org/haskellwiki/Parsec) library from Haskell.
 
 Picoparse will lazily scan input as needed and provides smart backtracking facilities. The 
 core library is not specific to text and will work over any iterable type.
@@ -15,7 +15,18 @@ core library is not specific to text and will work over any iterable type.
  * The `picoparse` package is the core of the parser library. 
  * `picoparse.text` contains a few useful tools for building text oriented parsers.
  * `examples\xml.py` is an example implementation of a parser for a reasonable subset of xml.
+ * `test.py` runs all the test cases found in `tests`
 
+## Installing
+
+You can install the latest release with `easy_install` or (presumably) `pip`; eg:
+
+    easy_install picoparse
+
+Alternatively, you can get the source as a tarball or with `git` and install with:
+
+    python setup.py install 
+ 
 ## Using Picoparse
 
 Parsers are functions that consume input by calling smaller parsers, and returning a value. 
@@ -41,5 +52,4 @@ a [Bugs Everywhere](http://bugseverywhere.org/) bug tracker for tracking bugs.
 
 ## See also
 
-Also implementing similar ideas are [PyParsing](http://pyparsing.wikispaces.com/) and   
-[Pysec](http://www.valuedlessons.com/2008/02/pysec-monadic-combinatoric-parsing-in.html).
+Also implementing similar ideas in python are [PyParsing](http://pyparsing.wikispaces.com/) and [Pysec](http://www.valuedlessons.com/2008/02/pysec-monadic-combinatoric-parsing-in.html).
