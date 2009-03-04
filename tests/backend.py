@@ -96,8 +96,8 @@ class TestBufferWalker(unittest.TestCase):
         self.assertEquals(self.bw.peek(), 'b')
     
     def test_choice_null(self):
-        self.assertRaises(NoMatch, self.bw.choice)
-
+        self.bw.choice()
+    
     def test_choice_accept(self):
         self.bw.choice(self.bw.fail, self.bw.next)
         self.bw.choice(self.bw.next, self.bw.fail)

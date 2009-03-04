@@ -26,11 +26,35 @@
 
 from functools import partial
 from itertools import izip, count
+from operator import add
 import threading
 
 class NoMatch(Exception):
+    def __init__(self, token, pos, expecting, flags=[]):
+        self.token = token
+        self.pos = pos
+        self.expecting = expecting
+        self.flags = flags
+    
+    @classmethod
+    def join(cls, failures):
+        token = failures[0].token
+        pos = failures[0].pos
+        expecting = reduce(add, [f.expecting for f in failures], [])
+        return NoMatch(token, pos, expecting)
+    
+    def describe(self, text):
+        self.expecting = [text]
+    
+    def __repr__(self, indent=0):
+        return "NoMatch(" + ", ".join(repr(x) for x in [self.token, self.pos, self.expecting, self.flags]) + ")"
+    
     def __str__(self):
-        return getattr(self, 'message', '')
+        return repr(self)
+
+
+FailedAfterCutting = "FailedAfterCutting"
+
 
 class DefaultDiagnostics(object):
     def __init__(self):
@@ -129,8 +153,8 @@ class BufferWalker(object):
         """Returns the current position or None"""
         return self.current()[1]
     
-    def fail(self):
-        raise NoMatch()
+    def fail(self, expecting):
+        raise NoMatch(self.peek(), self.pos(), expecting)
     
     def tri(self, parser, *args, **kwargs):
         old_depth = self.commit_depth
@@ -156,32 +180,55 @@ class BufferWalker(object):
     
     def choice(self, *parsers):
         if not parsers:
-            raise NoMatch()
+            return
         start_offset = self.offset
         start_index = self.index
         start_depth = self.depth
+        start_token = peek()
+        start_pos = pos()
+        failures = []
         for parser in parsers:
             try:
                 return parser()
-            except NoMatch:
-                if self.offset != start_offset or self.depth < start_depth:
-                    if self.depth < start_depth:
-                        raise Exception("Picoparse: Internal error")
-                    raise
+            except NoMatch, e:
+                if self.depth < start_depth:
+                    raise Exception("Picoparse: Internal error")
+                if not failures or e.pos > failures[0].pos:
+                    failures = [e]
+                elif e.pos == failures[0].pos:
+                    failures.append(e)
+                if self.offset != start_offset:
+                    if FailedAfterCutting not in e.flags:
+                        e.flags.append(FailedAfterCutting)
+                    break
                 if self.depth > start_depth:
                     self.depth = start_depth
                 self.index = start_index
-        else:
-            raise NoMatch()
+        raise NoMatch.join(failures)
 
 local_ps = threading.local()
 
 ################################################################
 # Picoparse core API
 
+def p(name, parser, *args1, **kwargs1):
+    def p_desc(*args2, **kwargs2):
+        cur_pos = pos()
+        try:
+            args = args1 + args2
+            kwargs = {}
+            kwargs.update(kwargs1)
+            kwargs.update(kwargs2)
+            return parser(*args, **kwargs)
+        except NoMatch, e:
+            if e.pos == cur_pos:
+                e.expecting = name
+            raise
+    return p_desc
+
 next = lambda: local_ps.value.next()
 peek = lambda: local_ps.value.peek()
-fail = lambda: local_ps.value.fail()
+fail = lambda expecting=[]: local_ps.value.fail(expecting)
 commit = lambda: local_ps.value.commit()
 choice = lambda *options: local_ps.value.choice(*options)
 is_eof = lambda: bool(local_ps.value)
@@ -197,12 +244,11 @@ def run_parser(parser, input, wrapper=None):
     old = getattr(local_ps, 'value', None)
     local_ps.value = BufferWalker(input, wrapper)
     try:
-      result = parser(), remaining()
+        result = parser(), remaining()
     except NoMatch, e:
-      e.message = "Remaining: %r" %  (remaining())
-      raise
+        raise
     finally:
-      local_ps.value = old
+        local_ps.value = old
     return result
 
 ################################################################
@@ -234,7 +280,7 @@ def any_token():
     """
     ch = peek()
     if ch is EndOfFile:
-        fail()
+        fail(["not eof"])
     next()
     return ch
 
@@ -246,10 +292,10 @@ def one_of(these):
     ch = peek()
     try:
         if (ch is EndOfFile) or (ch not in these):
-            fail()
+            fail(list(these))
     except TypeError:
         if ch != these:
-            fail()
+            fail(list(these))
     next()
     return ch
 
@@ -259,14 +305,24 @@ def not_one_of(these):
     The negative of one_of. 
     """
     ch = peek()
+    desc = "not_one_of" + repr(these)
     try:
         if (ch is EndOfFile) or (ch in these):
-            fail()
+            fail([desc])
     except TypeError:
         if ch != these:
-            fail()
+            fail([desc])
     next()
     return ch
+
+def _fun_to_str(f):
+    name = getattr(f, "__name__", "???")
+    pos = getattr(f, "func_code", False)
+    if pos:
+        pos = code.co_filename + ":" + str(code.co_firstlineno)
+    else:
+        pos = "???"
+    return name + " at " + code
 
 def satisfies(guard):
     """Returns the current token if it satisfies the guard function provided.
@@ -276,11 +332,11 @@ def satisfies(guard):
     """
     i = peek()
     if (i is EndOfFile) or (not guard(i)):
-        fail()
+        fail(["<satisfies predicate " + _fun_to_str(guard) + ">"])
     next()
     return i
 
-def optional(parser, default):
+def optional(parser, default=None):
     """Tries to apply the provided parser, returning default if the parser fails.
     """
     return choice(parser, lambda: default)
@@ -292,7 +348,7 @@ def not_followed_by(parser):
         failed = object()
         result = optional(tri(parser), failed)
         if result != failed:
-            fail()
+            fail(["not " + _fun_to_str(parser)])
     choice(not_followed_by_block)
 
 eof = partial(not_followed_by, any_token)
