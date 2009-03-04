@@ -153,7 +153,7 @@ class BufferWalker(object):
         """Returns the current position or None"""
         return self.current()[1]
     
-    def fail(self, expecting):
+    def fail(self, expecting=[]):
         raise NoMatch(self.peek(), self.pos(), expecting)
     
     def tri(self, parser, *args, **kwargs):
@@ -184,8 +184,8 @@ class BufferWalker(object):
         start_offset = self.offset
         start_index = self.index
         start_depth = self.depth
-        start_token = peek()
-        start_pos = pos()
+        start_token = self.peek()
+        start_pos = self.pos()
         failures = []
         for parser in parsers:
             try:
@@ -319,10 +319,10 @@ def _fun_to_str(f):
     name = getattr(f, "__name__", "???")
     pos = getattr(f, "func_code", False)
     if pos:
-        pos = code.co_filename + ":" + str(code.co_firstlineno)
+        pos = pos.co_filename + ":" + str(pos.co_firstlineno)
     else:
         pos = "???"
-    return name + " at " + code
+    return name + " at " + pos
 
 def satisfies(guard):
     """Returns the current token if it satisfies the guard function provided.
