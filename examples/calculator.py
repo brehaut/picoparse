@@ -43,11 +43,10 @@ worked out by asking the node to `merge` with its right hand node. Examine
 `bin_op` and `BinaryNode.merge` to see how this works.
 """
 
-from functools import partial
 from string import digits as digit_chars
 
-from picoparse import compose
-from picoparse import one_of, many1, choice, tri, commit, optional
+from picoparse import compose, p as partial
+from picoparse import one_of, many1, choice, tri, commit, optional, fail
 from picoparse.text import run_text_parser, lexeme, build_string, whitespace
 
 # syntax tree classes

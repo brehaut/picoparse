@@ -38,7 +38,7 @@ Parsers are functions that consume input by calling smaller parsers, and returni
 
     run_parser(my_toplevel_parser, file(input_file).read())
 
-It is recommended that you examine `examples\xml.py` to see a worked example.
+It is recommended that you examine `examples/xml.py` to see a worked example.
 
 An important idea with Picoparse is 'specialising' an existing parser by using `functools.partial` to generate a new parser function. Eg, to create a parser that consumes an 'a':
 
