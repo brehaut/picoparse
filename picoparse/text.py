@@ -27,11 +27,13 @@ for instance the quote and quoted parsers assume quotes can be ' or "
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 # POSSIBILITY OF SUCH DAMAGE.
 
+from string import whitespace as _whitespace_chars
+
 from picoparse import string, one_of, many, many1, many_until, any_token, run_parser
 from functools import partial
 
 quote = partial(one_of, "\"'")
-whitespace_char = partial(one_of, ' \t\n\r')
+whitespace_char = partial(one_of, _whitespace_chars)
 whitespace = partial(many, whitespace_char)
 whitespace1 = partial(many1, whitespace_char)
 newline = partial(one_of, '\n')
