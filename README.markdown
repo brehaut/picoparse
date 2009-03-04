@@ -15,9 +15,9 @@ core library is not specific to text and will work over any iterable type.
  * The `picoparse` package is the core of the parser library. 
  * `picoparse.text` contains a few useful tools for building text oriented 
     parsers.
- * `examples\xml.py` is an example implementation of a parser for a reasonable 
+ * `examples/xml.py` is an example implementation of a parser for a reasonable 
     subset of xml.
- * `examples\calculator.py` is an example implementation of infix arithmetic
+ * `examples/calculator.py` is an example implementation of infix arithmetic
     parser and evaluator.
  * `test.py` runs all the test cases found in `tests`
 
@@ -111,7 +111,7 @@ Choosing between possible parsers is achieved with the `choice` combinator, ofte
 
 ### Matching something wrapped
  
- * `picoparse.text.lexeme` match a parser with optional whitespace on either    
+ * `picoparse.text.lexeme` match a parser with optional whitespace on either
     side.
  * `picoparse.text.quoted` Match a parser with in single or double quote 
     characters until a matching quote is found.
