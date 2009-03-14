@@ -41,7 +41,7 @@ class NoMatch(Exception):
     def join(cls, failures):
         token = failures[0].token
         pos = failures[0].pos
-        expecting = reduce(add, [f.expecting for f in failures], [])
+        expecting = sorted(set(reduce(add, [f.expecting for f in failures], [])))
         return NoMatch(token, pos, expecting)
 
     @property
