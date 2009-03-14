@@ -78,9 +78,9 @@ Matching multiple items is achieved by passing a primitive parser to a combinato
    terminating parser matches.
  * `picoparse.sep` Matches a parser zero or more times, with a separator being
    matched between each pair.    
- * `picoparse.sep` Matches a parser one or more times, with a separator being
+ * `picoparse.sep1` Matches a parser one or more times, with a separator being
    matched between each pair.  
- * `picoparse.optional` Matches zero or one of parser. 
+ * `picoparse.optional` Matches a parser zero or one times. 
  * `picoparse.text.whitespace` Match zero or more whitespace characters
  * `picoparse.text.whitespace1` Match one or more whitespace characters
    
