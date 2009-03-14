@@ -82,8 +82,9 @@ class TextDiagnostics(object):
         self._line = []
         self.offset = 1
     
-    def error_text(self, location, error):
-        pass
+    def generate_error_message(self, noMatch):
+        return noMatch.default_message \
+               + "\n" + "\n".join(self.lines)
     
     def cut(self, p):
         row = self.row

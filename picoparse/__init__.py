@@ -28,6 +28,7 @@ from functools import partial
 from itertools import izip, count
 from operator import add
 import threading
+import pdb
 
 class NoMatch(Exception):
     def __init__(self, token, pos, expecting, flags=[]):
@@ -35,6 +36,7 @@ class NoMatch(Exception):
         self.pos = pos
         self.expecting = expecting
         self.flags = flags
+        self.message = None
     
     @classmethod
     def join(cls, failures):
@@ -42,12 +44,16 @@ class NoMatch(Exception):
         pos = failures[0].pos
         expecting = reduce(add, [f.expecting for f in failures], [])
         return NoMatch(token, pos, expecting)
-    
-    def __repr__(self):
+
+    @property
+    def default_message(self):
         return "\nParse error at " + str(self.pos) \
                + "\nexpecting one of " + ', '.join(map(lambda x:repr(x), self.expecting)) \
                + "\ngot " + repr(self.token) \
                + ("\nwith " + ', '.join(map(lambda x:str(x), self.flags)) if self.flags else '')
+    
+    def __repr__(self):
+        return self.message if self.message else self.default_message
     
     def __str__(self):
         return repr(self)
@@ -61,11 +67,12 @@ class DefaultDiagnostics(object):
         self.tokens = []
         self.offset = 1
     
-    def error_text(self, location, error):
-        pass
+    def generate_error_message(self, noMatch):
+        return noMatch.default_message \
+               + "\n" + repr(self.tokens)
     
     def cut(self, col):
-        if col is None:
+        if col is EndOfFile:
             col = self.offset + len(self.tokens)
         to_cut = col - self.offset
         self.tokens = self.tokens[to_cut:]
@@ -128,7 +135,7 @@ class BufferWalker(object):
             for i in range(size):
                 self.buffer.append(self.source.next())
         except StopIteration:
-            self.buffer.append((EndOfFile, None))
+            self.buffer.append((EndOfFile, EndOfFile))
         self.len = len(self.buffer)
     
     def next(self):
@@ -140,17 +147,17 @@ class BufferWalker(object):
         return t
     
     def current(self):
-        """Returns the current (token, position) or (EndOfFile, None)"""
+        """Returns the current (token, position) or (EndOfFile, EndOfFile)"""
         if self.index >= self.len:
             self._fill((self.index - self.len) + 1)
-        return self.buffer[self.index] if self.index < self.len else (EndOfFile, None)
+        return self.buffer[self.index] if self.index < self.len else (EndOfFile, EndOfFile)
     
     def peek(self):
         """Returns the current token or EndOfFile"""
         return self.current()[0]
     
     def pos(self):
-        """Returns the current position or None"""
+        """Returns the current position or EndOfFile"""
         return self.current()[1]
     
     def fail(self, expecting=[]):
@@ -249,6 +256,7 @@ def run_parser(parser, input, wrapper=None):
     try:
         result = parser(), remaining()
     except NoMatch, e:
+        e.message = getattr(local_ps.value.diag, 'generate_error_message', lambda x: None)(e)
         raise
     finally:
         local_ps.value = old
@@ -438,15 +446,23 @@ def string(string):
         found.append(one_of(c))
     return found
 
-def cue(cue, parser):
-    """Returns the result of parser if it cue preceeds it.
+def cue(*parsers):
+    """"Runs multiple parsers and returns the result of the last.
     """
-    cue()
-    return parser()
+    if not parsers:
+        return None
+    for p in parsers[:-1]:
+        p()
+    return parsers[-1]()
 
-def follow(parser, following):
-    v = parser()
-    following()
+def follow(*parsers):
+    """Runs multiple parsers and returns the result of the first.
+    """
+    if not parsers:
+        return None
+    v = parsers[0]()
+    for p in parsers[1:]:
+        p()
     return v
 
 def remaining():

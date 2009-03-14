@@ -25,8 +25,8 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 from functools import partial
-from picoparse import one_of, optional, many, choice, p
-from picoparse.text import run_text_parser
+from picoparse import one_of, optional, many, choice, p, cue
+from picoparse.text import run_text_parser, whitespace
 import sys
 
 def bracketed():
@@ -54,5 +54,5 @@ if __name__ == "__main__":
     text = ''
     if len(sys.argv) > 1:
         text = sys.argv[1]
-    print run_text_parser(part, text)
+    print run_text_parser(p(cue, whitespace, part), text)
 
