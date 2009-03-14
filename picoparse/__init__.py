@@ -212,6 +212,9 @@ local_ps = threading.local()
 # Picoparse core API
 
 def p(name, parser, *args1, **kwargs1):
+    if callable(name):
+        return partial(name, parser, *args1, **kwargs1)
+    
     def p_desc(*args2, **kwargs2):
         cur_pos = pos()
         try:
