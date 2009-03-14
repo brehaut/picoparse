@@ -28,7 +28,6 @@ from functools import partial
 from itertools import izip, count
 from operator import add
 import threading
-import pdb
 
 class NoMatch(Exception):
     def __init__(self, token, pos, expecting, flags=[]):
