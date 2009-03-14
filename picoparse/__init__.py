@@ -43,11 +43,11 @@ class NoMatch(Exception):
         expecting = reduce(add, [f.expecting for f in failures], [])
         return NoMatch(token, pos, expecting)
     
-    def describe(self, text):
-        self.expecting = [text]
-    
-    def __repr__(self, indent=0):
-        return "NoMatch(" + ", ".join(repr(x) for x in [self.token, self.pos, self.expecting, self.flags]) + ")"
+    def __repr__(self):
+        return "\nParse error at " + str(self.pos) \
+               + "\nexpecting one of " + ', '.join(map(lambda x:repr(x), self.expecting)) \
+               + "\ngot " + repr(self.token) \
+               + ("\nwith " + ', '.join(map(lambda x:str(x), self.flags)) if self.flags else '')
     
     def __str__(self):
         return repr(self)
@@ -225,7 +225,7 @@ def p(name, parser, *args1, **kwargs1):
             return parser(*args, **kwargs)
         except NoMatch, e:
             if e.pos == cur_pos:
-                e.expecting = name
+                e.expecting = [name]
             raise
     return p_desc
 
@@ -298,7 +298,7 @@ def one_of(these):
             fail(list(these))
     except TypeError:
         if ch != these:
-            fail(list(these))
+            fail([these])
     next()
     return ch
 

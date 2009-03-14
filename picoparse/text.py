@@ -66,6 +66,13 @@ def quoted(parser=any_token):
     value, _ = many_until(parser, partial(one_of, quote_char))
     return build_string(value)
 
+class Pos(object):
+    def __init__(self, row, col):
+        self.row = row
+        self.col = col
+    
+    def __str__(self):
+        return str(self.row) + ":" + str(self.col)
 
 class TextDiagnostics(object):
     def __init__(self):
@@ -81,7 +88,7 @@ class TextDiagnostics(object):
     def cut(self, p):
         row = self.row
         if p:
-            row, _ = p
+            row = p.row
         to_cut = (row - 1) - self.offset 
         self.offset += to_cut
         self.lines = self.lines[to_cut:]
@@ -107,9 +114,9 @@ class TextDiagnostics(object):
         line_str = u''.join(self._line)
         self.lines.append(line_str)
         for token in self._line:
-            yield (token, (self.row, self.col))
+            yield (token, Pos(self.row, self.col))
             self.col += 1
-        yield ('\n', (self.row, self.col))
+        yield ('\n', Pos(self.row, self.col))
         self.col = 1
         self.row += 1
         self._line = []
@@ -117,3 +124,4 @@ class TextDiagnostics(object):
 
 def run_text_parser(parser, input):
     return run_parser(parser, input, TextDiagnostics())
+
