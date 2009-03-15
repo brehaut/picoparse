@@ -46,8 +46,8 @@ worked out by asking the node to `merge` with its right hand node. Examine
 from string import digits as digit_chars
 
 from picoparse import compose, p as partial
-from picoparse import one_of, many1, choice, tri, commit, optional, fail
-from picoparse.text import run_text_parser, lexeme, build_string, whitespace
+from picoparse import one_of, many1, choice, tri, commit, optional, fail, follow
+from picoparse.text import run_text_parser, lexeme, build_string, whitespace, newline
 
 # syntax tree classes
 operators = ['-','+','*','/']
@@ -162,10 +162,10 @@ def value():
     val = choice(float_value, int_value) * (-1 if is_negative else 1)
     return ValueNode(val)
 
-term = partial(choice, parenthetical, partial(lexeme, value))
+term = partial('term', choice, parenthetical, partial('value', lexeme, value))
     
-expression = partial(choice, bin_op, term)
-    
+expression = partial('expression', choice, bin_op, term)
+
 run_calculator = partial(run_text_parser, expression)
 
 def calc(exp):

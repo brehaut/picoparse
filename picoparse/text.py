@@ -30,7 +30,7 @@ for instance the quote and quoted parsers assume quotes can be ' or "
 from string import whitespace as _whitespace_chars
 
 from picoparse import string, one_of, many, many1, many_until, any_token, run_parser
-from functools import partial
+from picoparse import p as partial
 
 quote = partial(one_of, "\"'")
 whitespace_char = partial(one_of, _whitespace_chars)
@@ -66,6 +66,15 @@ def quoted(parser=any_token):
     value, _ = many_until(parser, partial(one_of, quote_char))
     return build_string(value)
 
+def literal(s):
+    "A literal string."
+    return partial(s, string, s)
+        
+def caseless_literal(s):
+    "A literal string, case independant."
+    return partial(s, caseless_string, s)
+
+
 class Pos(object):
     def __init__(self, row, col):
         self.row = row
@@ -73,6 +82,7 @@ class Pos(object):
     
     def __str__(self):
         return str(self.row) + ":" + str(self.col)
+
 
 class TextDiagnostics(object):
     def __init__(self):
