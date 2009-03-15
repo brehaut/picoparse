@@ -217,6 +217,19 @@ local_ps = threading.local()
 ################################################################
 # Picoparse core API
 
+def desc(name):
+    def decorator(parser):
+        def decorated(*args, **kwargs):
+            cur_pos = pos()
+            try:
+                return parser(*args, **kwargs)
+            except NoMatch, e:
+                if e.pos == cur_pos:
+                    e.expecting = [name]
+                raise
+        return decorated
+    return decorator
+
 def p(name, parser, *args1, **kwargs1):
     if callable(name):
         return partial(name, parser, *args1, **kwargs1)
@@ -440,12 +453,10 @@ def string(string):
     note, If you wish to match caseless strings as in the example, use 
     picoparse.text.caseless_string.
     """
-    def string_block():
-        found = []
-        for c in string:
-            found.append(one_of(c))
-        return found
-    return p(string, string_block)()
+    found = []
+    for c in string:
+        found.append(one_of(c))
+    return found
 
 def cue(*parsers):
     """"Runs multiple parsers and returns the result of the last.

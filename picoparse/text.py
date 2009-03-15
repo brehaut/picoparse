@@ -31,6 +31,7 @@ from string import whitespace as _whitespace_chars
 
 from picoparse import string, one_of, many, many1, many_until, any_token, run_parser
 from picoparse import p as partial
+from picoparse import NoMatch, fail, tri
 
 quote = partial(one_of, "\"'")
 whitespace_char = partial(one_of, _whitespace_chars)
@@ -66,13 +67,21 @@ def quoted(parser=any_token):
     value, _ = many_until(parser, partial(one_of, quote_char))
     return build_string(value)
 
+def make_literal(s):
+    "returns a literal parser"
+    return partial(s, tri(string), s)
+
 def literal(s):
     "A literal string."
-    return partial(s, string, s)
-        
+    return make_literal(s)()
+ 
+def make_caseless_literal(s):
+    "returns a literal string, case independant parser."
+    return partial(s, tri(caseless_string), s)
+
 def caseless_literal(s):
     "A literal string, case independant."
-    return partial(s, caseless_string, s)
+    return make_caseless_literal(s)()
 
 
 class Pos(object):
