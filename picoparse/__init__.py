@@ -440,10 +440,12 @@ def string(string):
     note, If you wish to match caseless strings as in the example, use 
     picoparse.text.caseless_string.
     """
-    found = []
-    for c in string:
-        found.append(one_of(c))
-    return found
+    def string_block():
+        found = []
+        for c in string:
+            found.append(one_of(c))
+        return found
+    return p(string, string_block)()
 
 def cue(*parsers):
     """"Runs multiple parsers and returns the result of the last.
