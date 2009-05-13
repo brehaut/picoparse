@@ -24,10 +24,11 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 # POSSIBILITY OF SUCH DAMAGE.
 
-from functools import partial
+from picoparse import partial
 from picoparse import one_of, optional, many, choice, p, cue
 from picoparse.text import run_text_parser, whitespace
 import sys
+
 
 def bracketed():
     one_of('[')

@@ -24,7 +24,22 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 # POSSIBILITY OF SUCH DAMAGE.
 
-from functools import partial
+try:
+    from functools import partial
+except ImportError:
+    def __merged(d1,d2):
+        """Dictionary merge"""
+        d = d1.copy()
+        d.update(d2)
+        return d
+
+    def partial(*args,**kw):
+        """Return a version of a function with some arguments already supplied.
+        """
+        fn = args[0]
+        args = args[1:]
+        return lambda *args2,**kw2: fn(*(args+args2),**__merged(kw,kw2))
+
 from itertools import izip, count
 from operator import add
 import threading
@@ -49,10 +64,10 @@ class NoMatch(Exception):
         return "\nParse error at " + str(self.pos) \
                + "\nexpecting one of " + ', '.join(map(lambda x:repr(x), self.expecting)) \
                + "\ngot " + repr(self.token) \
-               + ("\nwith " + ', '.join(map(lambda x:str(x), self.flags)) if self.flags else '')
+               + ( self.flags and "\nwith " + ', '.join(map(lambda x:str(x), self.flags)) or '' )
     
     def __repr__(self):
-        return self.message if self.message else self.default_message
+        return self.message or self.default_message
     
     def __str__(self):
         return repr(self)
@@ -149,7 +164,7 @@ class BufferWalker(object):
         """Returns the current (token, position) or (EndOfFile, EndOfFile)"""
         if self.index >= self.len:
             self._fill((self.index - self.len) + 1)
-        return self.buffer[self.index] if self.index < self.len else (EndOfFile, EndOfFile)
+        return self.index < self.len and self.buffer[self.index] or (EndOfFile, EndOfFile)
     
     def peek(self):
         """Returns the current token or EndOfFile"""

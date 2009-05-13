@@ -24,7 +24,7 @@
 
 import unittest
 
-from functools import partial as p
+from picoparse import partial as p
 from picoparse import run_parser, NoMatch
 from picoparse import any_token, one_of, not_one_of, satisfies, eof
 from picoparse import many, many1, many_until, many_until1, n_of, optional

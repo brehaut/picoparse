@@ -159,7 +159,7 @@ def float_value():
 
 def value():
     is_negative = optional(partial(one_of, '-'), False)
-    val = choice(float_value, int_value) * (-1 if is_negative else 1)
+    val = choice(float_value, int_value) * (is_negative and -1 or 1)
     return ValueNode(val)
 
 term = partial('term', choice, parenthetical, partial('value', lexeme, value))

@@ -35,7 +35,7 @@ from picoparse import choice, string, peek, string, eof, many_until, any_token, 
 from picoparse import sep, sep1, compose, cue
 from picoparse.text import build_string, caseless_string, quoted, quote, whitespace, whitespace1
 from picoparse.text import lexeme, run_text_parser
-from functools import partial
+from picoparse import partial
 
 # We define common primative parsers by partial application. This is similar to the lexical 
 # analysis stage of a more traditional parser tool.
@@ -192,7 +192,7 @@ def prolog():
 # or it will just consume the body 
 @tri
 def processing(parser = False):
-    parser = parser if parser else compose(build_string, partial(many, partial(not_one_of, '?')))
+    parser = parser or compose(build_string, partial(many, partial(not_one_of, '?')))
 
     string('<?')
     commit()

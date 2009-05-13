@@ -23,7 +23,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 import unittest
-from functools import partial as p
+from picoparse import partial as p
 from picoparse import run_parser, NoMatch
 
 def run(parser, input):

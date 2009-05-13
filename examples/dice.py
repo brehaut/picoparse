@@ -24,7 +24,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 # POSSIBILITY OF SUCH DAMAGE.
 
-from functools import partial
+from picoparse import partial
 from picoparse.text import build_string, whitespace
 from picoparse import one_of, many, many1, not_one_of, run_parser, tri, commit, optional, fail
 from picoparse import choice, string, peek, string, eof, many_until, any_token, satisfies

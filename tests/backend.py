@@ -25,7 +25,7 @@
 import unittest
 
 from picoparse import NoMatch, DefaultDiagnostics, BufferWalker
-from functools import partial as p
+from picoparse import partial as p
 from itertools import count, izip
 
 class TestDefaultDiagnostics(unittest.TestCase):
