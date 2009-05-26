@@ -1,6 +1,8 @@
 #!/usr/bin/env python
-
-from distutils.core import setup
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
 
 setup(name='picoparse',
       version='0.9',
