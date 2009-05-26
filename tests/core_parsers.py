@@ -54,7 +54,7 @@ class TestTokenConsumers(ParserTestCase):
         self.assertEquals(run(any_token, 'b'), ('b', []))
         self.assertEquals(run(any_token, 'ab'), ('a', ['b']))
                 
-        self.assertRaises(NoMatch, run, any_token, '')
+        self.assertNoMatch(any_token, '')
     
     def testone_of(self):
         # matches
