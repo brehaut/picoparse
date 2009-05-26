@@ -188,9 +188,9 @@ class TestSeperatorCombinators(ParserTestCase):
     def testsep(self):
         self.assertEquals(run(as_sep_by_b, ''), [])
         self.assertEquals(run(as_sep_by_b, 'a'), ['a'])        
-        self.assertNoMatch(as_sep_by_b, 'ab')
+        self.assertEquals(run(as_sep_by_b, 'ab'), ['a'])
         self.assertEquals(run(as_sep_by_b, 'aba'), ['a','a'])      
-        self.assertNoMatch(as_sep_by_b, 'abab')
+        self.assertEquals(run(as_sep_by_b, 'abab'), ['a', 'a'])
         self.assertEquals(run(as_sep_by_b, 'ababa'), ['a','a','a'])      
         self.assertEquals(run(as_sep_by_b, 'b'), [])
         self.assertEquals(run(as_sep_by_b, 'ba'), [])
@@ -199,9 +199,9 @@ class TestSeperatorCombinators(ParserTestCase):
     def testsep1(self):
         self.assertNoMatch(one_or_more_as_sep_by_b, '')
         self.assertEquals(run(one_or_more_as_sep_by_b, 'a'), ['a'])        
-        self.assertNoMatch(one_or_more_as_sep_by_b, 'ab')
+        self.assertEquals(run(one_or_more_as_sep_by_b, 'ab'), ['a'])
         self.assertEquals(run(one_or_more_as_sep_by_b, 'aba'), ['a','a'])      
-        self.assertNoMatch(one_or_more_as_sep_by_b, 'abab')
+        self.assertEquals(run(one_or_more_as_sep_by_b, 'abab'), ['a', 'a'])
         self.assertEquals(run(one_or_more_as_sep_by_b, 'ababa'), ['a','a','a'])      
         self.assertNoMatch(one_or_more_as_sep_by_b, 'b')
         self.assertNoMatch(one_or_more_as_sep_by_b, 'ba')

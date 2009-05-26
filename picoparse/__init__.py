@@ -442,7 +442,7 @@ def sep1(parser, separator):
     def inner():
         separator()
         return parser()
-    return first + many(inner)
+    return first + many(tri(inner))
 
 def sep(parser, separator):
     """Consumes zero or more of parser, separated by separator.
