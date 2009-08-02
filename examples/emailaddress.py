@@ -193,10 +193,10 @@ specials = partial(one_of, '()<>[]:;@\,."')
 # Section 3.2.5 Parsers - http://tools.ietf.org/html/rfc5322#section-3.2.5
 
 # word            =   atom / quoted-string
-word = partial(choice, atom, quoted_string)
+word = partial(choice, tri(atom), quoted_string)
 
 # phrase          =   1*word / obs-phrase
-phrase = partial(choice, partial(many1, word), obs_phrase)
+phrase = partial(choice, tri(partial(many1, word)), obs_phrase)
 
 # Section 3.4.1 Parsers - http://tools.ietf.org/html/rfc5322#section-3.4.1
 
@@ -230,18 +230,19 @@ address = None # define the reference, allows circular definition
 mailbox = None
 
 # address-list    =   (address *("," address)) / obs-addr-list
-address_list = partial(choice, partial(seq, address, comma), obs_addr_list)
+address_list = tri(partial(choice, partial(seq, address, comma), obs_addr_list))
 
 # mailbox-list    =   (mailbox *("," mailbox)) / obs-mbox-list
-mailbox_list = partial(choice, partial(sep, mailbox, comma), obs_mbox_list)
+mailbox_list = tri(partial(choice, partial(sep, mailbox, comma), obs_mbox_list))
 
 # group-list      =   mailbox-list / CFWS / obs-group-list
-group_list = partial(choice, mailbox_list, CFWS, obs_group_list)
+group_list = tri(partial(choice, mailbox_list, CFWS, obs_group_list))
 
 # display-name    =   phrase
-display_name = phrase
+display_name = tri(phrase)
 
 # group           =   display-name ":" [group-list] ";" [CFWS]
+@tri
 def group():
     display_name()
     colon()
@@ -250,6 +251,7 @@ def group():
 
 # angle-addr      =   [CFWS] "<" addr-spec ">" [CFWS] /
 #                     obs-angle-addr
+@tri
 def angle_addr_nonobs():
     optional(CFWS)
     angle()
@@ -259,6 +261,7 @@ def angle_addr_nonobs():
 angle_addr = partial(choice, angle_addr_nonobs, obs_angle_addr)
 
 # name-addr       =   [display-name] angle-addr
+@tri
 def name_addr():
     optional(display_name)
     angle_addr()
