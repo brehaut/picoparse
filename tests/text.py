@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Copyright (c) 2009, Andrew Brehaut, Steven Ashley
 # All rights reserved.
 # 
@@ -27,12 +28,12 @@ import unittest
 from picoparse.text import newline, whitespace_char, whitespace, whitespace1
 from picoparse.text import lexeme, quote, quoted, caseless_string
 
-from utils import run, runp, ParserTestCase
+from utils import TextParserTestCase
 
 
-class TestWhitespaceParsers(ParserTestCase):
+class TestWhitespaceParsers(TextParserTestCase):
     def testnewline(self):
-        self.assertEquals(run(newline,'\n'), '\n')
+        self.assertMatch(newline, '\n', '\n', [])
     
 """
 quote
@@ -47,6 +48,8 @@ quoted
 TextDiagnostics
 """
 
+if __name__ == '__main__':
+    unittest.main()
 
 __all__ = [cls.__name__ for name, cls in locals().items()
                         if isinstance(cls, type) 

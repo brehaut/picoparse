@@ -23,11 +23,29 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 import unittest
-from picoparse import partial as p
-from picoparse import run_parser, NoMatch
+import picoparse
+import picoparse.text
+from picoparse import partial, NoMatch
+from picoparse.text import run_text_parser
 
 class ParserTestCase(unittest.TestCase):
+    """Allow test cases to specialize
+    """
+    def run_parser(self, parser, input):
+        return picoparse.run_parser(parser, input)
+
+    """Handles a match
+    """
+    def assertMatch(self, parser, input, expected, remaining, *args):
+        self.assertEquals(self.run_parser(parser, input), (expected, remaining), *args)
+
     """Handles the common case that a parser doesnt match input.
     """
     def assertNoMatch(self, parser, input, *args):
-        self.assertRaises(NoMatch, p(run_parser, parser, input), *args)
+        self.assertRaises(NoMatch, partial(self.run_parser, parser, input), *args)
+
+class TextParserTestCase(ParserTestCase):
+    """Allow test cases to specialize
+    """
+    def run_parser(self, parser, input):
+        return picoparse.text.run_text_parser(parser, input)

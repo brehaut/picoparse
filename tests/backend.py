@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Copyright (c) 2009, Andrew Brehaut, Steven Ashley
 # All rights reserved.
 # 

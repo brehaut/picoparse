@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # Copyright (c) 2009, Andrew Brehaut, Steven Ashley
 # All rights reserved.
 # 
@@ -25,4 +25,8 @@
 
 from backend import *
 from core_parsers import *
+from text import *
+import unittest
 
+if __name__ == '__main__':
+    unittest.main()
