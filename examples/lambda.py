@@ -31,7 +31,7 @@ import sys
 from picoparse import choice, p, one_of, many, many1, tri, eof, not_followed_by, satisfies, string, commit, optional, sep1, desc, not_one_of
 from picoparse.text import run_text_parser, whitespace
 
-reserved_words = ["let", "in", "fn", "def"]
+reserved_words = ["let", "in", "fn", "def", "where"]
 reserved_operators = ["=", "->"]
 operator_chars = "+-*/!<>=@$%^&~|?"
 
@@ -120,20 +120,24 @@ def special(name):
   return name
 
 def expression():
-  return choice(eval_expression, let_expression, fn_expression)
+  expr = choice(eval_expression, let_expression, fn_expression)
+  where = optional(where_expression, None)
+  if where:
+	return ('where', expr, where)
+  else:
+	return expr
 
 def eval_expression():
   parts = many1(expression_part)
-  where <- optional(where_expression, None)
   if len(parts) == 1:
     return parts[0]
   else:
-    return ('eval', parts, where)
+    return ('eval', parts)
 
 def expression_part():
   return choice(value, identifier, operator, parenthetical)
 
-def binding():
+def let_binding():
   name = identifier()
   reserved_op('=')
   expr = expression()
@@ -189,7 +193,8 @@ if __name__ == "__main__":
     def fib = fn n ->
         if (n == 0)
             then 0
-            else (fib (n - 1) + fib (n - 2));
+            else (fib n1 + fib n2)
+                where n1 = n - 1, n2 = n1 - 1
     let x = 5, y = 4
     in fib (x * y)
     """
