@@ -73,8 +73,6 @@ def string_literal():
 def value():
   return choice(number, string_literal)
 
-
-
 @tri
 def reserved(name):
   assert name in reserved_words
@@ -92,8 +90,6 @@ def identifier():
   rest = many(identifier_char)
   name = u''.join([first] + rest)
   return ('ident', name)
-
-
 
 def operator_char():
   return one_of(operator_chars)

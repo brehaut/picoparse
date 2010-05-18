@@ -25,9 +25,6 @@
 
 import unittest
 
-import utils
-
-import picoparse
 from picoparse import NoMatch, DefaultDiagnostics, BufferWalker
 from picoparse import partial as p
 from itertools import count, izip

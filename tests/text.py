@@ -25,10 +25,7 @@
 
 import unittest
 
-import utils
 import core_parsers
-
-import picoparse
 from picoparse.text import newline, whitespace_char, whitespace, whitespace1
 from picoparse.text import lexeme, quote, quoted, caseless_string
 

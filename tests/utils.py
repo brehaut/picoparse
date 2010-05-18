@@ -24,23 +24,14 @@
 
 import unittest
 
-import sys
-
-if 'picoparse' not in sys.modules:
-	from os import path
-	sys.path.insert(0, path.abspath(path.join(path.dirname(sys.argv[0]), '..')))
-	import picoparse
-
-import picoparse
-import picoparse.text
-from picoparse import partial, NoMatch
+from picoparse import partial, NoMatch, run_parser
 from picoparse.text import run_text_parser
 
 class ParserTestCase(unittest.TestCase):
     """Allow test cases to specialize
     """
     def run_parser(self, parser, input):
-        return picoparse.run_parser(parser, input)
+        return run_parser(parser, input)
 
     """Handles a match
     """
@@ -56,4 +47,4 @@ class TextParserTestCase(ParserTestCase):
     """Allow test cases to specialize
     """
     def run_parser(self, parser, input):
-        return picoparse.text.run_text_parser(parser, input)
+        return run_text_parser(parser, input)

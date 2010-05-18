@@ -25,9 +25,6 @@
 
 import unittest
 
-import utils
-
-import picoparse
 from picoparse import partial as p
 from picoparse import run_parser as run, NoMatch
 from picoparse import any_token, one_of, not_one_of, satisfies, eof
