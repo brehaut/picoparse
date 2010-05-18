@@ -27,29 +27,29 @@ import unittest
 
 import core_parsers
 from picoparse.text import newline, whitespace_char, whitespace, whitespace1
-from picoparse.text import lexeme, quote, quoted, caseless_string
+from picoparse.text import lexeme, quote, quoted, caseless_string, run_text_parser
 
 from utils import TextParserTestCase
 
 class TestTextTokenConsumers(core_parsers.TestTokenConsumers):
     def run_parser(self, *args):
-		return picoparse.text.run_text_parser(*args)
+		return run_text_parser(*args)
 		
 class TestTextManyCombinators(core_parsers.TestManyCombinators):
     def run_parser(self, *args):
-		return picoparse.text.run_text_parser(*args)
+		return run_text_parser(*args)
 
 class TestTextSeparatorCombinators(core_parsers.TestSeparatorCombinators):
     def run_parser(self, *args):
-		return picoparse.text.run_text_parser(*args)
+		return run_text_parser(*args)
 
 class TestTextSequencingCombinators(core_parsers.TestSequencingCombinators):
     def run_parser(self, *args):
-		return picoparse.text.run_text_parser(*args)
+		return run_text_parser(*args)
 
 class TestTextFuture(core_parsers.TestFuture):
     def run_parser(self, *args):
-		return picoparse.text.run_text_parser(*args)
+		return run_text_parser(*args)
 
 class TestWhitespaceParsers(TextParserTestCase):
     def testnewline(self):
