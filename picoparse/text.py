@@ -29,21 +29,27 @@ for instance the quote and quoted parsers assume quotes can be ' or "
 
 from string import whitespace as _whitespace_chars
 
-from picoparse import string, one_of, many, many1, many_until, any_token, run_parser
 from picoparse import p as partial
-from picoparse import NoMatch, fail, tri
+from picoparse import string, one_of, many, many1, many_until, any_token, run_parser
+from picoparse import NoMatch, fail, tri, EndOfFile, optional
 
 quote = partial(one_of, "\"'")
 whitespace_char = partial(one_of, _whitespace_chars)
 whitespace = partial(many, whitespace_char)
 whitespace1 = partial(many1, whitespace_char)
-newline = partial(one_of, '\n')
+
+def newline():
+    """Parse a new-line character of the form CRLF, LF, or CR"""
+    ch = one_of('\r\n')
+    if ch == '\r':
+        ch += optional(partial(one_of, '\n'), '')
+    return ch
 
 def build_string(iterable):
     """A utility function to wrap up the converting a list of characters back into a string.
     """
     return u''.join(iterable)
-    
+
 def caseless_string(s):
     """Attempts to match input to the letters in the string, without regard for case.
     """
@@ -98,49 +104,51 @@ class TextDiagnostics(object):
         self.lines = []
         self.row = 1
         self.col = 1
-        self._line = []
-        self.offset = 1
-    
+        self.line = []
+
     def generate_error_message(self, noMatch):
         return noMatch.default_message \
                + "\n" + "\n".join(self.lines)
-    
+
     def cut(self, p):
-        row = self.row
-        if p:
-            row = p.row
-        to_cut = (row - 1) - self.offset 
-        self.offset += to_cut
-        self.lines = self.lines[to_cut:]
-    
+        if p == EndOfFile:
+            self.lines = []
+        else:
+            # 1   |  num rows = 5
+            # 2 | |
+            # 3 | |_ cut (3 rows) (2 discarded from buffer)
+            # 4 |                  2 = 3 - (5 - 4)
+            # 5 |_ buffer (4 rows)
+            buffer_rows = len(self.lines)
+            num_rows = self.row - 1
+            cut_rows = p.row - 1
+            discard_rows = cut_rows - (num_rows - buffer_rows)
+            self.lines = self.lines[discard_rows:]
+
     def wrap(self, stream):
+        prev_ch = None
         try:
             while True:
-                t = stream.next()
-                if t == '\r' or t == '\n':
-                    for r in self._emit_line():
-                        yield r
-                    if t == '\r':
-                        t2 = stream.next()
-                        if t2 != '\n':
-                            self._line.append(t2)
-                else:
-                    self._line.append(t)
+                ch = stream.next()
+                if prev_ch == '\r' and ch != '\n':
+                    for tok in self.emit_line():
+                        yield tok
+                self.line.append(ch)
+                if ch == '\n':
+                    for tok in self.emit_line():
+                        yield tok
         except StopIteration:
-            for r in self._emit_line():
-                yield r
-    
-    def _emit_line(self):
-        line_str = u''.join(self._line)
-        self.lines.append(line_str)
-        for token in self._line:
-            yield (token, Pos(self.row, self.col))
-            self.col += 1
-        yield ('\n', Pos(self.row, self.col))
-        self.col = 1
-        self.row += 1
-        self._line = []
+            for tok in self.emit_line():
+                yield tok
 
+    def emit_line(self):
+        self.lines.append(u''.join(self.line))
+        for ch in self.line:
+            yield (ch, Pos(self.row, self.col))
+            self.col += 4 if ch == '\t' else 1
+        self.row += 1
+        self.col = 1
+        self.line = []
 
 def run_text_parser(parser, input):
     return run_parser(parser, input, TextDiagnostics())

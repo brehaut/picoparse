@@ -23,6 +23,11 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 # POSSIBILITY OF SUCH DAMAGE.
 
+if __name__ == '__main__':
+    import sys
+    from os import path
+    sys.path.insert(0, path.abspath(path.join(path.dirname(sys.argv[0]), '..')))
+
 import unittest
 
 import core_parsers
@@ -53,8 +58,15 @@ class TestTextFuture(core_parsers.TestFuture):
 
 class TestWhitespaceParsers(TextParserTestCase):
     def testnewline(self):
-        self.assertMatch(newline, '\n', '\n', [])
-    
+        self.assertMatch(newline, '\r',   '\r',   [])
+        self.assertMatch(newline, '\r\r', '\r',   ['\r'])
+        self.assertMatch(newline, '\r\n', '\r\n', [])
+        self.assertMatch(newline, '\n',   '\n',   [])
+        self.assertMatch(newline, '\n\r', '\n',   ['\r'])
+        self.assertMatch(newline, '\n\n', '\n',   ['\n'])
+        self.assertNoMatch(newline, ' ')
+        self.assertNoMatch(newline, '\t')
+
 """
 quote
 whitespace_char
