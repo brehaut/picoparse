@@ -25,6 +25,9 @@
 
 import unittest
 
+import utils
+
+import picoparse
 from picoparse import partial as p
 from picoparse import run_parser as run, NoMatch
 from picoparse import any_token, one_of, not_one_of, satisfies, eof
@@ -185,7 +188,7 @@ as_sep_by_b = p(sep, one_a, one_b)
 one_or_more_as_sep_by_b = p(sep1, one_a, one_b)
 
 
-class TestSeperatorCombinators(ParserTestCase):
+class TestSeparatorCombinators(ParserTestCase):
     def testsep(self):
         self.assertMatch(as_sep_by_b, '', [], [])
         self.assertMatch(as_sep_by_b, 'a', ['a'], [])

@@ -23,6 +23,14 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 import unittest
+
+import sys
+
+if 'picoparse' not in sys.modules:
+	from os import path
+	sys.path.insert(0, path.abspath(path.join(path.dirname(sys.argv[0]), '..')))
+	import picoparse
+
 import picoparse
 import picoparse.text
 from picoparse import partial, NoMatch
