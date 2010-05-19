@@ -25,7 +25,7 @@
 
 from backend import *
 from core_parsers import *
-from text import *
+from text_parsers import *
 import unittest
 
 if __name__ == '__main__':

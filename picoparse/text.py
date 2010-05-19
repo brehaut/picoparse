@@ -37,13 +37,7 @@ quote = partial(one_of, "\"'")
 whitespace_char = partial(one_of, _whitespace_chars)
 whitespace = partial(many, whitespace_char)
 whitespace1 = partial(many1, whitespace_char)
-
-def newline():
-    """Parse a new-line character of the form CRLF, LF, or CR"""
-    ch = one_of('\r\n')
-    if ch == '\r':
-        ch += optional(partial(one_of, '\n'), '')
-    return ch
+newline = partial(one_of, "\n")
 
 def build_string(iterable):
     """A utility function to wrap up the converting a list of characters back into a string.
@@ -126,13 +120,9 @@ class TextDiagnostics(object):
             self.lines = self.lines[discard_rows:]
 
     def wrap(self, stream):
-        prev_ch = None
         try:
             while True:
                 ch = stream.next()
-                if prev_ch == '\r' and ch != '\n':
-                    for tok in self.emit_line():
-                        yield tok
                 self.line.append(ch)
                 if ch == '\n':
                     for tok in self.emit_line():

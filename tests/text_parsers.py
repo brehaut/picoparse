@@ -58,14 +58,10 @@ class TestTextFuture(core_parsers.TestFuture):
 
 class TestWhitespaceParsers(TextParserTestCase):
     def testnewline(self):
-        self.assertMatch(newline, '\r',   '\r',   [])
-        self.assertMatch(newline, '\r\r', '\r',   ['\r'])
-        self.assertMatch(newline, '\r\n', '\r\n', [])
-        self.assertMatch(newline, '\n',   '\n',   [])
-        self.assertMatch(newline, '\n\r', '\n',   ['\r'])
-        self.assertMatch(newline, '\n\n', '\n',   ['\n'])
-        self.assertNoMatch(newline, ' ')
-        self.assertNoMatch(newline, '\t')
+        self.assertMatch(newline, '\n', '\n', [])
+        self.assertMatch(newline, '\n\n', '\n', ['\n'])
+        self.assertNoMatch(newline, '\r\n')
+        self.assertNoMatch(newline, '\r')
 
 """
 quote
