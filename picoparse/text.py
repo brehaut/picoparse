@@ -31,18 +31,22 @@ from string import whitespace as _whitespace_chars
 
 from picoparse import p as partial
 from picoparse import string, one_of, many, many1, many_until, any_token, run_parser
-from picoparse import NoMatch, fail, tri, EndOfFile, optional
-
-quote = partial(one_of, "\"'")
-whitespace_char = partial(one_of, _whitespace_chars)
-whitespace = partial(many, whitespace_char)
-whitespace1 = partial(many1, whitespace_char)
-newline = partial(one_of, "\n")
+from picoparse import NoMatch, fail, tri, EndOfFile, optional, compose
 
 def build_string(iterable):
     """A utility function to wrap up the converting a list of characters back into a string.
     """
     return u''.join(iterable)
+
+as_string = partial(compose, build_string)
+
+
+
+quote = partial(one_of, "\"'")
+whitespace_char = partial(one_of, _whitespace_chars)
+whitespace = as_string(partial(many, whitespace_char))
+whitespace1 = as_string(partial(many1, whitespace_char))
+newline = partial(one_of, "\n")
 
 def caseless_string(s):
     """Attempts to match input to the letters in the string, without regard for case.

@@ -36,7 +36,7 @@ class ParserTestCase(unittest.TestCase):
     """Handles a match
     """
     def assertMatch(self, parser, input, expected, remaining, *args):
-        self.assertEquals(self.run_parser(parser, input), (expected, remaining), *args)
+        self.assertEquals(self.run_parser(parser, input), (expected, list(remaining)), *args)
 
     """Handles the common case that a parser doesnt match input.
     """

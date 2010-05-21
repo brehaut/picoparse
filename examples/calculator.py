@@ -47,7 +47,7 @@ from string import digits as digit_chars
 
 from picoparse import compose, p as partial
 from picoparse import one_of, many1, choice, tri, commit, optional, fail, follow
-from picoparse.text import run_text_parser, lexeme, build_string, whitespace, newline
+from picoparse.text import run_text_parser, lexeme, build_string, whitespace, newline, as_string
 
 # syntax tree classes
 operators = ['-','+','*','/']
@@ -119,8 +119,7 @@ class BinaryNode(object):
 
 
 # parser
-digits = partial(lexeme, compose(build_string, 
-                                 partial(many1, partial(one_of, digit_chars))))
+digits = partial(lexeme, as_string(partial(many1, partial(one_of, digit_chars))))
 operator = partial(lexeme, partial(one_of, operators))
     
 @tri
