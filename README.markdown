@@ -1,7 +1,5 @@
 # picoparse
 
-> "Yo dawg, I heard you like parsing…"
-
 Picoparse is a very small parser / scanner library for Python. It is built to make 
 constructing parsers  straight forward, and without the complications regular expressions 
 bring to the table. The design is inspired by the 
@@ -23,7 +21,7 @@ core library is not specific to text and will work over any iterable type.
 
 ## Installing
 
-You can install the latest release with `easy_install` or (presumably) `pip`; eg:
+You can install the latest release with `easy_install` or (presumably) `pip`; e.g:
 
     easy_install picoparse
 
@@ -47,10 +45,32 @@ An important idea with Picoparse is 'specialising' an existing parser by using `
 and to make a parser that accepts many 'a's:
 
     many_as = partial(many, a)
+    
+## Examples
+
+The most detailed example is `examples/xml.py` however this might be overwhelming initially. This example is intended to be as a tutorial; it covers a broach range of the features of picoparse as it builds up an minimal (and not fully conformant) XML parser. To get there it includes a sub parser to handle the XML specs character classes.
+
+The simplest are `examples/paren.py` and `examples/paren2.py` however these never got the tutorial treatment. These paren examples count nested parenthesis and brackets. The first one is about the simplest parser you could consider. The second version shows how we can use partial application to specialize one parser into specific ones. This highlights the 'parser combinator' aspect of the design.
+
+`examples/calculator.py` is an example of a simple, general, infix expression parser. If you know exactly which operators you want, there are more sophisticated models that you can use, but they are quite confusing on first examination.
+
+Lastly there is `examples/emailaddress.py` which is a direct mapping of the email address RFC's grammar into picoparse functions. This is the most complex of the examples but should give you an indication how easy it can be to convert formal grammars into pure python.
+
+## Background
+
+A few notes on style; Picoparse is takes advantage of the features of python that support functional programming. If you are new to this, it's worth doing some reading about it. In particular the parsers we create are a style called [Parser Combinators](http://en.wikipedia.org/wiki/Parser_combinators); this is basically a fancy way of say that our parsers are functions and that some parsers are created by combining existing parsers. The most obvious example here is something like `many` which takes another parser as its argument. You'll see more detail about this in the examples, particularly the xml example.
+
+The parser combinator style is a special case of whats known as a [Recursive Decent](http://en.wikipedia.org/wiki/Recursive_descent_parser) (or LL for Left-Left) parser. Each parser function recurses down into more specialized parsers. What makes it special is that it has *Infinite Lookahead* through a feature of the design where it [backtracks](http://en.wikipedia.org/wiki/Backtracking) when it fails to parse. *Lookahead* means that that parser can look at a number of tokens ahead of where you currently are. Traditional recursive decent parser have a fixed lookahead (usually one or two tokens).
+
+A word on tokens; in traditional parsers the design is split into two parts: [Lexical Analysis](http://en.wikipedia.org/wiki/Lexical_analysis) and Parsing. The lexical analysis (or lexing or tokenization) takes a stream of characters and returns a stream of tokens, the parser would then consume this stream of tokens. Parser Combinators let you do both stages at once. Picoparse is general enough that if you do wish to have a separate lexing stage, you can write your parser in terms of tokens instead of characters.   
+
+These two characteristics make parser combinators amazingly expressive. You have the full power of your programming language to bring to bare, and you can describe things with remarkable ease (e.g. how the xml parser parsers characters with a parser made from parsing a formal specification directly from the xml spec for example of this). The trade of is that its not as fast on as some more traditional methods; hence the library is designed to make the development of small or experimental parsers easy and enjoyable rather than focusing on raw speed.
+
+For more detail on how picoparse handles backtracking you will want to look at the primative parsers `choice`, `fail`, `commit` and the decorator `tri`. Choice describes a series of options to try parsing the input with in order. Fail tells the system that the current path doesn't match. Commit indicates that this path has reached a point where the system is not allowed to backtrack past. Typically you only need to worry about committing for performance reasons. If you need to get more detail on this you'll need to examine the BufferWalker class. *Note:* The BufferWalker has accumulated a bunch of features and needs refactoring but neither author has had a chance to undertake this yet.
 
 ## How do I…
 
-Heres is a glossary of parsers and combinators by outcome to help learn to use Picoparse. Look at doc comments for specifics. 
+Heres is a glossary of parsers and combinators organised by outcome to help learn to use Picoparse. Look at doc comments for specifics. 
 
 ### Match input
 
@@ -120,7 +140,6 @@ Choosing between possible parsers is achieved with the `choice` combinator, ofte
 
 This project is tracked with GIT via [GitHub](http://github.com/brehaut/picoparse/), and uses
 a [Bugs Everywhere](http://bugseverywhere.org/) bug tracker for tracking bugs.
-
 
 ## See also
 
