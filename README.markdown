@@ -1,5 +1,7 @@
 # picoparse
 
+**Note:** *This project is effectively abandoned at this point. I won't be making any more changes or releases, and issues will be ignored.*
+
 Picoparse is a very small parser / scanner library for Python. It is built to make 
 constructing parsers  straight forward, and without the complications regular expressions 
 bring to the table. The design is inspired by the 
